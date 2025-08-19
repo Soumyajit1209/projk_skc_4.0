@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
-import { executeQuery } from "./db"
+import { executeQuery, executeQuerySingle } from "./db"
+import type { User, Admin } from "./types" 
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
 
@@ -72,5 +73,51 @@ export async function authenticateAdmin(username: string, password: string) {
     admin_id: admin.admin_id,
     username: admin.username,
     email: admin.email,
+  }
+}
+
+export async function loginUser(identifier: string, password: string): Promise<User | null> {
+  // Check if identifier is email or phone
+  const isEmail = identifier.includes("@")
+  const query = isEmail ? "SELECT * FROM users WHERE email = ?" : "SELECT * FROM users WHERE phone = ?"
+
+  const user = await executeQuerySingle<User & { password_hash: string }>(query, [identifier])
+
+  if (!user) return null
+
+  const isValid = await verifyPassword(password, user.password_hash)
+  if (!isValid) return null
+
+  return {
+    user_id: user.user_id,
+    email: user.email,
+    phone: user.phone,
+    created_at: user.created_at,
+  }
+}
+
+export async function loginAdmin(identifier: string, password: string): Promise<Admin | null> {
+  // Check if identifier is email, phone, or username
+  let query: string
+  if (identifier.includes("@")) {
+    query = "SELECT * FROM admins WHERE email = ?"
+  } else if (/^\d+$/.test(identifier)) {
+    query = "SELECT * FROM admins WHERE phone = ?"
+  } else {
+    query = "SELECT * FROM admins WHERE username = ?"
+  }
+
+  const admin = await executeQuerySingle<Admin & { password_hash: string }>(query, [identifier])
+
+  if (!admin) return null
+
+  const isValid = await verifyPassword(password, admin.password_hash)
+  if (!isValid) return null
+
+  return {
+    admin_id: admin.admin_id,
+    username: admin.username,
+    email: admin.email,
+    created_at: admin.created_at,
   }
 }

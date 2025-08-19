@@ -1,97 +1,59 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useAuth } from "@/components/auth-provider"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Users, Filter, Eye, Ban, CheckCircle, XCircle, Calendar, MapPin, User } from "lucide-react"
+import { Users, UserCheck, UserX, Heart } from "lucide-react"
 import Image from "next/image"
 
-interface UserProfile {
-  id: number
-  name: string
+interface Profile {
+  profile_id: number
+  user_id: number
   email: string
-  age: number
-  gender: string
-  caste: string
-  religion: string
-  state: string
-  city: string
-  occupation: string
-  education: string
-  marital_status: string
-  profile_photo: string
-  status: "active" | "inactive" | "banned"
+  phone: string
+  photo: string | null
+  contact: string | null
+  caste: string | null
+  location: string | null
+  state: string | null
+  gender: "male" | "female"
+  age: number | null
+  status: "pending" | "approved" | "rejected"
   created_at: string
 }
 
-export default function AdminDashboard() {
-  const { user, loading } = useAuth()
-  const router = useRouter()
-  const [profiles, setProfiles] = useState<UserProfile[]>([])
-  const [filteredProfiles, setFilteredProfiles] = useState<UserProfile[]>([])
-  const [loadingProfiles, setLoadingProfiles] = useState(true)
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    activeUsers: 0,
-    maleUsers: 0,
-    femaleUsers: 0,
-  })
+interface Stats {
+  totalUsers: number
+  pendingProfiles: number
+  approvedProfiles: number
+  totalMatches: number
+}
 
-  // Filter states
+export default function AdminDashboard() {
+  const [profiles, setProfiles] = useState<Profile[]>([])
+  const [stats, setStats] = useState<Stats>({ totalUsers: 0, pendingProfiles: 0, approvedProfiles: 0, totalMatches: 0 })
+  const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({
-    search: "",
-    caste: "",
+    gender: "all",
     ageMin: "",
     ageMax: "",
+    caste: "",
+    location: "",
     state: "",
-    gender: "",
-    status: "",
+    status: "all",
   })
 
   useEffect(() => {
-    if (!loading && (!user || user.role !== "admin")) {
-      router.push("/login")
-      return
-    }
-
-    if (user?.role === "admin") {
-      fetchProfiles()
-      fetchStats()
-    }
-  }, [user, loading, router])
-
-  const fetchProfiles = async () => {
-    try {
-      const token = localStorage.getItem("token")
-      const response = await fetch("/api/admin/profiles", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setProfiles(data.profiles)
-        setFilteredProfiles(data.profiles)
-      }
-    } catch (error) {
-      console.error("Error fetching profiles:", error)
-    } finally {
-      setLoadingProfiles(false)
-    }
-  }
+    fetchStats()
+    fetchProfiles()
+  }, [])
 
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem("token")
-      const response = await fetch("/api/admin/stats", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
+      const response = await fetch("/api/admin/stats")
       if (response.ok) {
         const data = await response.json()
         setStats(data)
@@ -101,16 +63,32 @@ export default function AdminDashboard() {
     }
   }
 
-  const updateUserStatus = async (userId: number, status: string) => {
+  const fetchProfiles = async () => {
     try {
-      const token = localStorage.getItem("token")
+      setLoading(true)
+      const queryParams = new URLSearchParams()
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== "all") queryParams.append(key, value)
+      })
+
+      const response = await fetch(`/api/admin/profiles?${queryParams}`)
+      if (response.ok) {
+        const data = await response.json()
+        setProfiles(data)
+      }
+    } catch (error) {
+      console.error("Error fetching profiles:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const updateProfileStatus = async (profileId: number, status: "approved" | "rejected", reason?: string) => {
+    try {
       const response = await fetch("/api/admin/update-status", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ userId, status }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profileId, status, reason }),
       })
 
       if (response.ok) {
@@ -118,82 +96,29 @@ export default function AdminDashboard() {
         fetchStats()
       }
     } catch (error) {
-      console.error("Error updating status:", error)
+      console.error("Error updating profile status:", error)
     }
   }
 
-  // Apply filters
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }))
+  }
+
   useEffect(() => {
-    let filtered = profiles
-
-    if (filters.search) {
-      filtered = filtered.filter(
-        (profile) =>
-          profile.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-          profile.email.toLowerCase().includes(filters.search.toLowerCase()),
-      )
-    }
-
-    if (filters.caste) {
-      filtered = filtered.filter((profile) => profile.caste === filters.caste)
-    }
-
-    if (filters.ageMin) {
-      filtered = filtered.filter((profile) => profile.age >= Number.parseInt(filters.ageMin))
-    }
-
-    if (filters.ageMax) {
-      filtered = filtered.filter((profile) => profile.age <= Number.parseInt(filters.ageMax))
-    }
-
-    if (filters.state) {
-      filtered = filtered.filter((profile) => profile.state === filters.state)
-    }
-
-    if (filters.gender) {
-      filtered = filtered.filter((profile) => profile.gender === filters.gender)
-    }
-
-    if (filters.status) {
-      filtered = filtered.filter((profile) => profile.status === filters.status)
-    }
-
-    setFilteredProfiles(filtered)
-  }, [filters, profiles])
-
-  const getUniqueValues = (key: keyof UserProfile) => {
-    return [...new Set(profiles.map((profile) => profile[key]))].filter(Boolean)
-  }
-
-  if (loading || loadingProfiles) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading admin dashboard...</p>
-        </div>
-      </div>
-    )
-  }
+    fetchProfiles()
+  }, [filters])
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 to-pink-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center gap-3">
-              <Image src="/matchb-logo.png" alt="MatchB" width={120} height={40} className="h-8 w-auto" />
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Admin Dashboard</h1>
-                <p className="text-sm text-gray-600">Manage matrimonial profiles</p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Image src="/matchb-logo.png" alt="MatchB" width={120} height={40} className="h-10 w-auto" />
+              <div className="border-l border-gray-300 pl-3">
+                <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
               </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">Welcome, {user?.name}</span>
-              <Button variant="outline" onClick={() => router.push("/")}>
-                Back to Site
-              </Button>
             </div>
           </div>
         </div>
@@ -214,154 +139,96 @@ export default function AdminDashboard() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-600" />
+              <CardTitle className="text-sm font-medium">Pending Profiles</CardTitle>
+              <UserX className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.activeUsers}</div>
+              <div className="text-2xl font-bold">{stats.pendingProfiles}</div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Male Users</CardTitle>
-              <User className="h-4 w-4 text-blue-600" />
+              <CardTitle className="text-sm font-medium">Approved Profiles</CardTitle>
+              <UserCheck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.maleUsers}</div>
+              <div className="text-2xl font-bold">{stats.approvedProfiles}</div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Female Users</CardTitle>
-              <User className="h-4 w-4 text-pink-600" />
+              <CardTitle className="text-sm font-medium">Total Matches</CardTitle>
+              <Heart className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.femaleUsers}</div>
+              <div className="text-2xl font-bold">{stats.totalMatches}</div>
             </CardContent>
           </Card>
         </div>
 
         {/* Filters */}
-        <Card className="mb-8">
+        <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Filter className="h-5 w-5" />
-              Filter Profiles
-            </CardTitle>
-            <CardDescription>Filter profiles by various criteria</CardDescription>
+            <CardTitle>Filter Profiles</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
-              <div className="md:col-span-2">
-                <Input
-                  placeholder="Search by name or email..."
-                  value={filters.search}
-                  onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-                  className="w-full"
-                />
-              </div>
-
-              <Select
-                value={filters.caste}
-                onValueChange={(value) => setFilters((prev) => ({ ...prev, caste: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Caste" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Castes</SelectItem>
-                  {getUniqueValues("caste").map((caste) => (
-                    <SelectItem key={caste} value={caste as string}>
-                      {caste}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  placeholder="Min Age"
-                  value={filters.ageMin}
-                  onChange={(e) => setFilters((prev) => ({ ...prev, ageMin: e.target.value }))}
-                />
-                <Input
-                  type="number"
-                  placeholder="Max Age"
-                  value={filters.ageMax}
-                  onChange={(e) => setFilters((prev) => ({ ...prev, ageMax: e.target.value }))}
-                />
-              </div>
-
-              <Select
-                value={filters.state}
-                onValueChange={(value) => setFilters((prev) => ({ ...prev, state: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="State" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All States</SelectItem>
-                  {getUniqueValues("state").map((state) => (
-                    <SelectItem key={state} value={state as string}>
-                      {state}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={filters.gender}
-                onValueChange={(value) => setFilters((prev) => ({ ...prev, gender: value }))}
-              >
+              <Select value={filters.gender} onValueChange={(value) => handleFilterChange("gender", value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Gender" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Genders</SelectItem>
-                  <SelectItem value="Male">Male</SelectItem>
-                  <SelectItem value="Female">Female</SelectItem>
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
                 </SelectContent>
               </Select>
 
-              <Select
-                value={filters.status}
-                onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
-              >
+              <Input
+                placeholder="Min Age"
+                type="number"
+                value={filters.ageMin}
+                onChange={(e) => handleFilterChange("ageMin", e.target.value)}
+              />
+
+              <Input
+                placeholder="Max Age"
+                type="number"
+                value={filters.ageMax}
+                onChange={(e) => handleFilterChange("ageMax", e.target.value)}
+              />
+
+              <Input
+                placeholder="Caste"
+                value={filters.caste}
+                onChange={(e) => handleFilterChange("caste", e.target.value)}
+              />
+
+              <Input
+                placeholder="Location"
+                value={filters.location}
+                onChange={(e) => handleFilterChange("location", e.target.value)}
+              />
+
+              <Input
+                placeholder="State"
+                value={filters.state}
+                onChange={(e) => handleFilterChange("state", e.target.value)}
+              />
+
+              <Select value={filters.status} onValueChange={(value) => handleFilterChange("status", value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="banned">Banned</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className="mt-4 flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() =>
-                  setFilters({
-                    search: "",
-                    caste: "all",
-                    ageMin: "",
-                    ageMax: "",
-                    state: "all",
-                    gender: "all",
-                    status: "all",
-                  })
-                }
-              >
-                Clear Filters
-              </Button>
-              <div className="text-sm text-gray-600 flex items-center">
-                Showing {filteredProfiles.length} of {profiles.length} profiles
-              </div>
             </div>
           </CardContent>
         </Card>
@@ -370,87 +237,91 @@ export default function AdminDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>User Profiles</CardTitle>
-            <CardDescription>Manage and moderate user profiles</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {filteredProfiles.map((profile) => (
-                <div
-                  key={profile.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-                >
-                  <div className="flex items-center gap-4">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={profile.profile_photo || "/placeholder.svg"} />
-                      <AvatarFallback>{profile.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium">{profile.name}</h3>
-                        <Badge
-                          variant={
-                            profile.status === "active"
-                              ? "default"
-                              : profile.status === "banned"
-                                ? "destructive"
-                                : "secondary"
-                          }
-                        >
-                          {profile.status}
-                        </Badge>
+            {loading ? (
+              <div className="text-center py-8">Loading profiles...</div>
+            ) : (
+              <div className="space-y-4">
+                {profiles.map((profile) => (
+                  <div key={profile.profile_id} className="border rounded-lg p-4 space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-4">
+                        {profile.photo && (
+                          <Image
+                            src={profile.photo || "/placeholder.svg"}
+                            alt="Profile"
+                            width={60}
+                            height={60}
+                            className="rounded-full object-cover"
+                          />
+                        )}
+                        <div>
+                          <h3 className="font-semibold">{profile.email}</h3>
+                          <p className="text-sm text-gray-600">{profile.phone}</p>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Badge
+                              variant={
+                                profile.status === "approved"
+                                  ? "default"
+                                  : profile.status === "pending"
+                                    ? "secondary"
+                                    : "destructive"
+                              }
+                            >
+                              {profile.status}
+                            </Badge>
+                            <span className="text-sm text-gray-500">
+                              {profile.gender} • {profile.age} years
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-600">{profile.email}</p>
-                      <div className="flex items-center gap-4 text-xs text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {profile.age} years
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {profile.city}, {profile.state}
-                        </span>
-                        <span>{profile.caste}</span>
-                        <span>{profile.occupation}</span>
+
+                      {profile.status === "pending" && (
+                        <div className="flex space-x-2">
+                          <Button
+                            size="sm"
+                            onClick={() => updateProfileStatus(profile.profile_id, "approved")}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() =>
+                              updateProfileStatus(profile.profile_id, "rejected", "Profile rejected by admin")
+                            }
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium">Caste:</span> {profile.caste || "N/A"}
+                      </div>
+                      <div>
+                        <span className="font-medium">Location:</span> {profile.location || "N/A"}
+                      </div>
+                      <div>
+                        <span className="font-medium">State:</span> {profile.state || "N/A"}
+                      </div>
+                      <div>
+                        <span className="font-medium">Contact:</span> {profile.contact || "N/A"}
                       </div>
                     </div>
                   </div>
+                ))}
 
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">
-                      <Eye className="h-4 w-4 mr-1" />
-                      View
-                    </Button>
-
-                    {profile.status === "active" ? (
-                      <Button variant="outline" size="sm" onClick={() => updateUserStatus(profile.id, "inactive")}>
-                        <XCircle className="h-4 w-4 mr-1" />
-                        Deactivate
-                      </Button>
-                    ) : (
-                      <Button variant="outline" size="sm" onClick={() => updateUserStatus(profile.id, "active")}>
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Activate
-                      </Button>
-                    )}
-
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => updateUserStatus(profile.id, "banned")}
-                      disabled={profile.status === "banned"}
-                    >
-                      <Ban className="h-4 w-4 mr-1" />
-                      Ban
-                    </Button>
-                  </div>
-                </div>
-              ))}
-
-              {filteredProfiles.length === 0 && (
-                <div className="text-center py-8 text-gray-500">No profiles found matching your criteria</div>
-              )}
-            </div>
+                {profiles.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">No profiles found matching the current filters.</div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

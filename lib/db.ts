@@ -6,26 +6,26 @@ const dbConfig = {
   password: process.env.DB_PASSWORD || "",
   database: process.env.DB_NAME || "skc_matrimonial_site",
   port: Number.parseInt(process.env.DB_PORT || "3306"),
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
 }
 
-// Create connection pool for better performance
-const pool = mysql.createPool(dbConfig)
+let connection: mysql.Connection | null = null
 
-export async function executeQuery(query: string, params: any[] = []) {
-  try {
-    const [results] = await pool.execute(query, params)
-    return results
-  } catch (error) {
-    console.error("Database query error:", error)
-    throw error
+export async function getConnection(): Promise<mysql.Connection> {
+  if (!connection) {
+    connection = await mysql.createConnection(dbConfig)
   }
+  return connection
 }
 
-export async function getConnection() {
-  return await pool.getConnection()
+export async function executeQuery<T = any>(query: string, params: any[] = []): Promise<T[]> {
+  const conn = await getConnection()
+  const [rows] = await conn.execute(query, params)
+  return rows as T[]
 }
 
-export default pool
+export async function executeQuerySingle<T = any>(query: string, params: any[] = []): Promise<T | null> {
+  const results = await executeQuery<T>(query, params)
+  return results.length > 0 ? results[0] : null
+}
+
+export type { Connection } from "mysql2/promise"

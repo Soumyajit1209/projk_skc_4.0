@@ -17,7 +17,7 @@ export default function LoginPage() {
           <div className="flex items-center justify-center gap-2 mb-2">
             <Image src="/matchb-logo.png" alt="MatchB" width={120} height={40} className="h-10 w-auto" />
           </div>
-          <p className="text-gray-600">Choose your login type</p>
+          <p className="text-gray-600">Choose your login type for MatchB</p>
         </div>
 
         <div className="space-y-4">

@@ -41,7 +41,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 })
     }
 
-    // Update user status
     await connection.execute("UPDATE users SET status = ? WHERE id = ? AND role = 'user'", [status, userId])
 
     await connection.end()
@@ -52,3 +51,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
+
