@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Mail, Phone } from "lucide-react"
+import { useAuth } from "@/components/auth-provider"
 
 export function UserLoginForm() {
   const [identifier, setIdentifier] = useState("")
@@ -16,6 +17,7 @@ export function UserLoginForm() {
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const { login } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -23,19 +25,13 @@ export function UserLoginForm() {
     setIsLoading(true)
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier, password, type: "user" }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        router.push("/dashboard")
-        router.refresh()
+      const success = await login(identifier, password, "user")
+      
+      if (success) {
+        // The AuthProvider will handle the redirect based on profile completion
+        // We don't need to manually redirect here
       } else {
-        setError(data.error || "Login failed")
+        setError("Invalid email/phone or password")
       }
     } catch (error) {
       setError("Network error. Please try again.")

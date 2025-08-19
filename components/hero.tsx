@@ -19,13 +19,13 @@ export function Hero() {
           </div>
 
           {/* Main Heading */}
-          <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight">
+          <h1 className="text-5xl md:text-7xl font-bold text-gray-500  mb-6 leading-tight">
             Find Your
             <span className="text-rose-600 block">Perfect Match</span>
           </h1>
 
           {/* Subheading */}
-          <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xl md:text-2xl text-gray-500 mb-8 max-w-2xl mx-auto leading-relaxed">
             Join India's most trusted matrimonial platform. Connect with verified profiles and find your life partner
             with complete privacy and security.
           </p>
@@ -70,7 +70,7 @@ export function Hero() {
                 <Shield className="w-6 h-6 text-rose-600" />
               </div>
               <div className="text-2xl font-bold text-gray-900">100%</div>
-              <div className="text-gray-600">Verified Profiles</div>
+              <div className="text-gray-500">Verified Profiles</div>
             </div>
           </div>
         </div>

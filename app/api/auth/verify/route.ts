@@ -23,29 +23,41 @@ export async function GET(request: NextRequest) {
 
     const connection = await mysql.createConnection(dbConfig)
 
-    const [rows] = await connection.execute("SELECT id, name, email, role FROM users WHERE id = ?", [decoded.userId])
-
-    // Check if profile is complete
-    const [profileRows] = await connection.execute("SELECT COUNT(*) as count FROM user_profiles WHERE user_id = ?", [
-      decoded.userId,
-    ])
-
-    await connection.end()
+    // Get user details
+    const [rows] = await connection.execute(
+      "SELECT id, name, email, phone, role, status FROM users WHERE id = ? AND status = 'active'", 
+      [decoded.userId]
+    )
 
     const users = rows as any[]
     const user = users[0]
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+      await connection.end()
+      return NextResponse.json({ error: "User not found or inactive" }, { status: 404 })
     }
 
-    const profileComplete = (profileRows as any[])[0].count > 0
+    let profileComplete = true // Default for admin users
+
+    // Check if profile is complete for regular users
+    if (user.role === 'user') {
+      const [profileRows] = await connection.execute(
+        "SELECT id, status FROM user_profiles WHERE user_id = ?", 
+        [decoded.userId]
+      )
+      
+      const profiles = profileRows as any[]
+      profileComplete = profiles.length > 0 && profiles[0].status !== 'rejected'
+    }
+
+    await connection.end()
 
     return NextResponse.json({
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
+        phone: user.phone,
         role: user.role,
         profileComplete,
       },

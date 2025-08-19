@@ -24,7 +24,7 @@ export function Header() {
           </nav>
 
           <div className="flex items-center space-x-4">
-            <Link href="/login">
+            <Link href="/login/user">
               <Button variant="ghost" className="text-gray-600 hover:text-rose-600 hover:bg-rose-50">
                 Sign In
               </Button>

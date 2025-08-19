@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, User, Mail, Phone } from "lucide-react"
+import { useAuth } from "@/components/auth-provider"
 
 export function AdminLoginForm() {
   const [identifier, setIdentifier] = useState("")
@@ -15,6 +16,7 @@ export function AdminLoginForm() {
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const { login } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -22,19 +24,12 @@ export function AdminLoginForm() {
     setIsLoading(true)
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier, password, type: "admin" }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
+      const success = await login(identifier, password, "admin")
+      
+      if (success) {
         router.push("/admin")
-        router.refresh()
       } else {
-        setError(data.error || "Login failed")
+        setError("Invalid credentials or insufficient permissions")
       }
     } catch (error) {
       setError("Network error. Please try again.")

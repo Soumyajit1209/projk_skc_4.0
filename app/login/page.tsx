@@ -38,7 +38,7 @@ export default function LoginPage() {
             </Link>
           </Card>
 
-          <Card className="shadow-xl border-0 hover:shadow-2xl transition-shadow cursor-pointer">
+          {/* <Card className="shadow-xl border-0 hover:shadow-2xl transition-shadow cursor-pointer">
             <Link href="/login/admin">
               <CardHeader className="text-center pb-4">
                 <div className="flex justify-center mb-3">
@@ -53,7 +53,7 @@ export default function LoginPage() {
                 <Button className="w-full h-11 bg-gray-600 hover:bg-gray-700">Continue as Admin</Button>
               </CardContent>
             </Link>
-          </Card>
+          </Card> */}
         </div>
 
         <div className="mt-6 text-center">
