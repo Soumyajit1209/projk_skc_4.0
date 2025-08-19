@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!loading && user) {
       // Only redirect after authentication if we're on auth pages
       const currentPath = window.location.pathname
-      const isAuthPage = ['/login', '/register', '/login/user', '/login/admin'].some(path => 
+      const isAuthPage = ['/login', '/register', '/login/user'].some(path => 
         currentPath.startsWith(path)
       )
 

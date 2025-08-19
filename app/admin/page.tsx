@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -15,10 +17,112 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { 
   Users, Filter, Eye, Ban, CheckCircle, XCircle, Calendar, MapPin, User, 
-  CreditCard, Heart, UserPlus, FileText, DollarSign, Clock
+  CreditCard, Heart, UserPlus, FileText, DollarSign, Clock, Loader2, Mail, Phone
 } from "lucide-react"
 import Image from "next/image"
 
+// Admin Login Component
+function AdminLogin() {
+  const [identifier, setIdentifier] = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const { login } = useAuth()
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+    setIsLoading(true)
+
+    try {
+      const success = await login(identifier, password, "admin")
+      
+      if (!success) {
+        setError("Invalid credentials or insufficient permissions")
+      }
+    } catch (error) {
+      setError("Network error. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const isEmail = identifier.includes("@")
+  const isPhone = /^\d+$/.test(identifier)
+  const isUsername = !isEmail && !isPhone && identifier.length > 0
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-gray-100 p-4">
+      <Card className="w-full max-w-md shadow-xl border-slate-200">
+        <CardHeader className="text-center space-y-4">
+          <div className="flex justify-center">
+            <Image src="/matchb-logo.png" alt="MatchB" width={120} height={40} className="h-10 w-auto" />
+          </div>
+          <CardTitle className="text-2xl font-serif font-bold text-gray-800">Admin Access</CardTitle>
+          <CardDescription>Enter your admin credentials to continue</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="identifier">Username, Email, or Phone</Label>
+              <div className="relative">
+                <Input
+                  id="identifier"
+                  type="text"
+                  placeholder="Enter username, email, or phone"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  required
+                  className="pl-10"
+                />
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                  {isEmail ? (
+                    <Mail className="h-4 w-4 text-gray-400" />
+                  ) : isPhone ? (
+                    <Phone className="h-4 w-4 text-gray-400" />
+                  ) : (
+                    <User className="h-4 w-4 text-gray-400" />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Enter admin password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+
+            <Button type="submit" className="w-full bg-gray-600 hover:bg-gray-700" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                "Access Admin Dashboard"
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// Interfaces (same as before)
 interface UserProfile {
   id: number
   name: string
@@ -83,21 +187,17 @@ interface CurrentMatch {
   matched_at: string
 }
 
-export default function AdminDashboard() {
+export default function AdminPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("profiles")
   
-  // Profiles state
+  // All the state variables (same as before)
   const [profiles, setProfiles] = useState<UserProfile[]>([])
   const [filteredProfiles, setFilteredProfiles] = useState<UserProfile[]>([])
   const [loadingProfiles, setLoadingProfiles] = useState(true)
-  
-  // Payments state
   const [payments, setPayments] = useState<Payment[]>([])
   const [loadingPayments, setLoadingPayments] = useState(true)
-  
-  // Matchmaking state
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
   const [potentialMatches, setPotentialMatches] = useState<PotentialMatch[]>([])
   const [currentMatches, setCurrentMatches] = useState<CurrentMatch[]>([])
@@ -105,7 +205,6 @@ export default function AdminDashboard() {
   const [userProfile, setUserProfile] = useState<any>(null)
   const [loadingMatches, setLoadingMatches] = useState(false)
   
-  // Stats
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeUsers: 0,
@@ -113,7 +212,6 @@ export default function AdminDashboard() {
     femaleUsers: 0,
   })
 
-  // Filter states
   const [filters, setFilters] = useState({
     search: "",
     caste: "",
@@ -124,7 +222,6 @@ export default function AdminDashboard() {
     status: "",
   })
 
-  // Profile approval state
   const [approvalDialog, setApprovalDialog] = useState<{
     open: boolean
     profile: UserProfile | null
@@ -137,7 +234,6 @@ export default function AdminDashboard() {
     rejectionReason: ""
   })
 
-  // Payment verification state
   const [paymentDialog, setPaymentDialog] = useState<{
     open: boolean
     payment: Payment | null
@@ -150,18 +246,30 @@ export default function AdminDashboard() {
     adminNotes: ""
   })
 
-  useEffect(() => {
-    if (!loading && (!user || user.role !== "admin")) {
-      router.push("/login")
-      return
-    }
+  // Show login form if not authenticated or not admin
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    )
+  }
 
+  if (!user || user.role !== "admin") {
+    return <AdminLogin />
+  }
+
+  // Rest of the component logic (fetch functions, handlers, etc.)
+  useEffect(() => {
     if (user?.role === "admin") {
       fetchProfiles()
       fetchStats()
       fetchPayments()
     }
-  }, [user, loading, router])
+  }, [user])
 
   const fetchProfiles = async () => {
     try {
@@ -406,7 +514,7 @@ export default function AdminDashboard() {
     return [...new Set(profiles.map((profile) => profile[key]))].filter(Boolean)
   }
 
-  if (loading || loadingProfiles) {
+  if (loadingProfiles) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -484,7 +592,7 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Main Content Tabs */}
+        {/* Rest of the dashboard content - same as before */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="profiles" className="flex items-center gap-2">
