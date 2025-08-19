@@ -12,49 +12,6 @@ const dbConfig = {
   port: Number.parseInt(process.env.DB_PORT || "3306"),
 }
 
-async function loginUser(identifier: string, password: string) {
-  const connection = await mysql.createConnection(dbConfig)
-  const [rows] = await connection.execute("SELECT * FROM users WHERE email = ? OR phone = ?", [identifier, identifier])
-  await connection.end()
-  const users = rows as any[]
-  const user = users[0]
-
-  if (!user || !(await bcrypt.compare(password, user.password))) {
-    return null
-  }
-
-  return {
-    user_id: user.id,
-    email: user.email,
-    phone: user.phone,
-  }
-}
-
-async function loginAdmin(identifier: string, password: string) {
-  const connection = await mysql.createConnection(dbConfig)
-  const [rows] = await connection.execute("SELECT * FROM admins WHERE username = ? OR email = ?", [
-    identifier,
-    identifier,
-  ])
-  await connection.end()
-  const admins = rows as any[]
-  const admin = admins[0]
-
-  if (!admin || !(await bcrypt.compare(password, admin.password))) {
-    return null
-  }
-
-  return {
-    admin_id: admin.id,
-    username: admin.username,
-    email: admin.email,
-  }
-}
-
-function generateToken(payload: any) {
-  return jwt.sign(payload, process.env.JWT_SECRET || "fallback-secret", { expiresIn: "7d" })
-}
-
 export async function POST(request: NextRequest) {
   try {
     const { identifier, password, type } = await request.json()
@@ -63,67 +20,76 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Identifier, password, and type are required" }, { status: 400 })
     }
 
-    if (type === "user") {
-      const user = await loginUser(identifier, password)
+    const connection = await mysql.createConnection(dbConfig)
 
-      if (!user) {
-        return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
-      }
+    // Query users table for both user and admin login
+    const [rows] = await connection.execute(
+      "SELECT * FROM users WHERE (email = ? OR phone = ?) AND status = 'active'", 
+      [identifier, identifier]
+    )
+    
+    await connection.end()
+    
+    const users = rows as any[]
+    const user = users[0]
 
-      const token = generateToken({
-        user_id: user.user_id,
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
+    }
+
+    // Check if the user role matches the requested login type
+    if (type === "admin" && user.role !== "admin") {
+      return NextResponse.json({ error: "Access denied. Admin privileges required." }, { status: 403 })
+    }
+
+    if (type === "user" && user.role !== "user") {
+      return NextResponse.json({ error: "Invalid login type for this account" }, { status: 403 })
+    }
+
+    const token = jwt.sign(
+      {
+        userId: user.id,
         email: user.email,
-        type: "user",
-      })
+        role: user.role,
+        type: user.role, // Keep for backward compatibility
+      },
+      process.env.JWT_SECRET || "fallback-secret",
+      { expiresIn: "7d" }
+    )
 
-      const cookieStore = await cookies()
-      cookieStore.set("auth-token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-      })
+    const cookieStore = await cookies()
+    cookieStore.set("auth-token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    })
 
-      return NextResponse.json({
-        message: "Login successful",
-        user: {
-          user_id: user.user_id,
-          email: user.email,
-          phone: user.phone,
-        },
-      })
-    } else if (type === "admin") {
-      const admin = await loginAdmin(identifier, password)
-
-      if (!admin) {
-        return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
-      }
-
-      const token = generateToken({
-        admin_id: admin.admin_id,
-        username: admin.username,
-        email: admin.email,
-        type: "admin",
-      })
-
-      const cookieStore = await cookies()
-      cookieStore.set("auth-token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-      })
-
+    if (user.role === "admin") {
       return NextResponse.json({
         message: "Admin login successful",
+        token,
         admin: {
-          admin_id: admin.admin_id,
-          username: admin.username,
-          email: admin.email,
+          admin_id: user.id,
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
         },
       })
     } else {
-      return NextResponse.json({ error: "Invalid login type" }, { status: 400 })
+      return NextResponse.json({
+        message: "Login successful",
+        token,
+        user: {
+          user_id: user.id,
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+        },
+      })
     }
   } catch (error) {
     console.error("Login error:", error)

@@ -1,20 +1,20 @@
 "use client"
 
 import type React from "react"
-
 import { createContext, useContext, useEffect, useState } from "react"
 
 interface User {
   id: number
   email: string
   name: string
+  phone?: string
   role: "user" | "admin"
   profileComplete: boolean
 }
 
 interface AuthContextType {
   user: User | null
-  login: (email: string, password: string) => Promise<boolean>
+  login: (identifier: string, password: string, type: "user" | "admin") => Promise<boolean>
   register: (email: string, password: string, name: string) => Promise<boolean>
   logout: () => void
   loading: boolean
@@ -27,10 +27,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check for existing session
     const token = localStorage.getItem("token")
     if (token) {
-      // Verify token with backend
       fetch("/api/auth/verify", {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -49,19 +47,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (identifier: string, password: string, type: "user" | "admin"): Promise<boolean> => {
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ identifier, password, type }),
       })
 
       const data = await res.json()
 
       if (res.ok) {
         localStorage.setItem("token", data.token)
-        setUser(data.user)
+
+        if (type === "admin" && data.admin) {
+          setUser({
+            id: data.admin.id,
+            email: data.admin.email,
+            name: data.admin.name,
+            role: "admin",
+            profileComplete: true,
+          })
+        } else if (type === "user" && data.user) {
+          setUser({
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.name,
+            phone: data.user.phone,
+            role: "user",
+            profileComplete: data.user.profileComplete ?? false,
+          })
+        }
+
         return true
       }
       return false
@@ -96,7 +113,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null)
   }
 
-  return <AuthContext.Provider value={{ user, login, register, logout, loading }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {
