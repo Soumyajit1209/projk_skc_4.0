@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from "next/server"
+import  { NextRequest, NextResponse } from "next/server"
 import mysql from "mysql2/promise"
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
@@ -13,9 +13,10 @@ const dbConfig = {
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, name } = await request.json()
+    const { email, password, name, phone } = await request.json()
 
-    if (!email || !password || !name) {
+    // Validate inputs
+    if (!email || !password || !name || !phone) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 })
     }
 
@@ -23,14 +24,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 })
     }
 
+    const phoneRegex = /^\+?[\d\s\-\(\)]{10,}$/
+    if (!phoneRegex.test(phone.trim())) {
+      return NextResponse.json({ error: "Invalid phone number format" }, { status: 400 })
+    }
+
     const connection = await mysql.createConnection(dbConfig)
 
     // Check if user already exists
-    const [existingUsers] = await connection.execute("SELECT id FROM users WHERE email = ?", [email])
+    const [existingUsers] = await connection.execute(
+      "SELECT id FROM users WHERE email = ? OR phone = ?",
+      [email, phone]
+    )
 
     if ((existingUsers as any[]).length > 0) {
       await connection.end()
-      return NextResponse.json({ error: "User already exists" }, { status: 409 })
+      return NextResponse.json({ error: "User with this email or phone number already exists" }, { status: 409 })
     }
 
     // Hash password
@@ -38,15 +47,15 @@ export async function POST(request: NextRequest) {
 
     // Create user
     const [result] = await connection.execute(
-      "INSERT INTO users (name, email, password, role, created_at) VALUES (?, ?, ?, ?, NOW())",
-      [name, email, hashedPassword, "user"],
+      "INSERT INTO users (name, email, phone, password, role, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
+      [name, email, phone, hashedPassword, "user"]
     )
 
     const userId = (result as any).insertId
 
     await connection.end()
 
-    const token = jwt.sign({ userId, email, role: "user" }, process.env.JWT_SECRET || "fallback-secret", {
+    const token = jwt.sign({ userId, email, phone, role: "user" }, process.env.JWT_SECRET || "fallback-secret", {
       expiresIn: "7d",
     })
 
@@ -56,6 +65,7 @@ export async function POST(request: NextRequest) {
         id: userId,
         email,
         name,
+        phone,
         role: "user",
         profileComplete: false,
       },
