@@ -28,23 +28,39 @@ export async function POST(request: NextRequest) {
       [identifier, identifier]
     )
     
-    await connection.end()
-    
     const users = rows as any[]
     const user = users[0]
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
+      await connection.end()
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 
     // Check if the user role matches the requested login type
     if (type === "admin" && user.role !== "admin") {
+      await connection.end()
       return NextResponse.json({ error: "Access denied. Admin privileges required." }, { status: 403 })
     }
 
     if (type === "user" && user.role !== "user") {
+      await connection.end()
       return NextResponse.json({ error: "Invalid login type for this account" }, { status: 403 })
     }
+
+    let profileComplete = true // Default for admin users
+
+    // Check if profile is complete for regular users
+    if (user.role === 'user') {
+      const [profileRows] = await connection.execute(
+        "SELECT id, status FROM user_profiles WHERE user_id = ?", 
+        [user.id]
+      )
+      
+      const profiles = profileRows as any[]
+      profileComplete = profiles.length > 0 && profiles[0].status !== 'rejected'
+    }
+
+    await connection.end()
 
     const token = jwt.sign(
       {
@@ -75,6 +91,7 @@ export async function POST(request: NextRequest) {
           name: user.name,
           email: user.email,
           role: user.role,
+          profileComplete: true,
         },
       })
     } else {
@@ -88,6 +105,7 @@ export async function POST(request: NextRequest) {
           email: user.email,
           phone: user.phone,
           role: user.role,
+          profileComplete: profileComplete,
         },
       })
     }

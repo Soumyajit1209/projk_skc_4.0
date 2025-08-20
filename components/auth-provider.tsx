@@ -49,29 +49,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Handle redirects when user state changes
-  useEffect(() => {
-    if (!loading && user) {
-      // Only redirect after authentication if we're on auth pages
-      const currentPath = window.location.pathname
-      const isAuthPage = ['/login', '/register', '/login/user'].some(path => 
-        currentPath.startsWith(path)
-      )
-
-      if (isAuthPage) {
-        if (user.role === "admin") {
-          router.push("/admin")
-        } else if (user.role === "user") {
-          if (!user.profileComplete) {
-            router.push("/profile/create")
-          } else {
-            router.push("/dashboard")
-          }
-        }
-      }
-    }
-  }, [user, loading, router])
-
   const login = async (identifier: string, password: string, type: "user" | "admin"): Promise<boolean> => {
     try {
       const res = await fetch("/api/auth/login", {
@@ -95,6 +72,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             role: "admin",
             profileComplete: true,
           }
+          setUser(userData)
+          router.push("/admin")
         } else if (type === "user" && data.user) {
           userData = {
             id: data.user.id,
@@ -102,13 +81,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             name: data.user.name,
             phone: data.user.phone,
             role: "user",
-            profileComplete: data.user.profileComplete ?? false,
+            profileComplete: data.user.profileComplete,
+          }
+          setUser(userData)
+          
+          // Redirect based on profile completion
+          if (userData.profileComplete) {
+            router.push("/dashboard")
+          } else {
+            router.push("/profile/create")
           }
         } else {
           return false
         }
 
-        setUser(userData)
         return true
       }
       return false
@@ -135,11 +121,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           name: data.user.name,
           phone: data.user.phone,
           role: data.user.role,
-          profileComplete: data.user.profileComplete,
+          profileComplete: false, // Always false for new registrations
         }
         setUser(userData)
         
-        // Redirect to profile creation after registration
+        // Always redirect to profile creation after registration
         router.push("/profile/create")
         return true
       }

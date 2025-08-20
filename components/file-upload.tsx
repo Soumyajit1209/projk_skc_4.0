@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Upload, X, ImageIcon } from "lucide-react"
@@ -10,9 +9,15 @@ interface FileUploadProps {
   onUpload: (url: string) => void
   currentImage?: string
   className?: string
+  acceptedTypes?: string 
 }
 
-export function FileUpload({ onUpload, currentImage, className = "" }: FileUploadProps) {
+export function FileUpload({
+  onUpload,
+  currentImage,
+  className = "",
+  acceptedTypes = "image/*", // ✅ default
+}: FileUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [preview, setPreview] = useState<string | null>(currentImage || null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -66,12 +71,22 @@ export function FileUpload({ onUpload, currentImage, className = "" }: FileUploa
 
   return (
     <div className={`space-y-4 ${className}`}>
-      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={acceptedTypes} // ✅ dynamic accept
+        onChange={handleFileSelect}
+        className="hidden"
+      />
 
       {preview ? (
         <div className="relative">
           <div className="w-32 h-32 rounded-lg overflow-hidden border-2 border-gray-200">
-            <img src={preview || "/placeholder.svg"} alt="Preview" className="w-full h-full object-cover" />
+            <img
+              src={preview || "/placeholder.svg"}
+              alt="Preview"
+              className="w-full h-full object-cover"
+            />
           </div>
           <Button
             type="button"
@@ -89,7 +104,9 @@ export function FileUpload({ onUpload, currentImage, className = "" }: FileUploa
           onClick={() => fileInputRef.current?.click()}
         >
           <ImageIcon className="h-8 w-8 text-gray-400 mb-2" />
-          <span className="text-sm text-gray-500 text-center">Click to upload photo</span>
+          <span className="text-sm text-gray-500 text-center">
+            Click to upload photo
+          </span>
         </div>
       )}
 
@@ -101,7 +118,7 @@ export function FileUpload({ onUpload, currentImage, className = "" }: FileUploa
         className="w-full"
       >
         <Upload className="h-4 w-4 mr-2" />
-        {uploading ? "Uploading..." : "Choose Photo"}
+        {uploading ? "Uploading..." : "Choose File"}
       </Button>
     </div>
   )
