@@ -1,4 +1,4 @@
-// app/api/admin/matches/route.ts
+
 import { type NextRequest, NextResponse } from "next/server"
 import mysql from "mysql2/promise"
 import jwt from "jsonwebtoken"
@@ -11,7 +11,6 @@ const dbConfig = {
   port: Number.parseInt(process.env.DB_PORT || "3306"),
 }
 
-// Get potential matches for a user
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization")

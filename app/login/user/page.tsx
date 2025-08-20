@@ -24,8 +24,8 @@ export default function UserLoginPage() {
               </Link>
             </p>
             <p className="text-sm text-muted-foreground mt-2">
-              <Link href="/login" className="text-gray-600 hover:underline">
-                ← Back to login options
+              <Link href="/" className="text-gray-600 hover:underline">
+                ← Back to Home
               </Link>
             </p>
           </div>

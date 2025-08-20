@@ -52,7 +52,7 @@ export function UserLoginForm() {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="identifier">Email or Phone</Label>
+        <Label htmlFor="identifier">Email or Phone(+xx xxxxxxxxxx)</Label>
         <div className="relative">
           <Input
             id="identifier"

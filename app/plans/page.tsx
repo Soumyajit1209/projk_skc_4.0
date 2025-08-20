@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Check, Star } from "lucide-react"
+import { Header } from "@/components/header"
 
 interface Plan {
   id: number
@@ -86,32 +87,9 @@ export default function PlansPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 to-pink-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
-              <Image src="/matchb-logo.png" alt="MatchB" width={120} height={40} className="h-8 w-auto" />
-            </div>
-            <nav className="hidden md:flex space-x-8">
-              <a href="/" className="text-gray-700 hover:text-rose-600 transition-colors">
-                Home
-              </a>
-              <a href="/about" className="text-gray-700 hover:text-rose-600 transition-colors">
-                About
-              </a>
-              <a href="/plans" className="text-rose-600 font-medium">
-                Plans
-              </a>
-              <a href="/contact" className="text-gray-700 hover:text-rose-600 transition-colors">
-                Contact
-              </a>
-              <a href="/login" className="text-gray-700 hover:text-rose-600 transition-colors">
-                Login
-              </a>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Header />
+
+      <div className="pt-16">
 
       {/* Hero Section */}
       <section className="py-20">
@@ -216,6 +194,8 @@ export default function PlansPage() {
           </div>
         </div>
       </section>
+      </div>
     </div>
+  
   )
 }
