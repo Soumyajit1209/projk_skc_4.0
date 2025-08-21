@@ -90,7 +90,7 @@ function AdminLogin() {
                     <User className="h-4 w-4 text-gray-400" />
                   )}
                 </div>
-              </div>
+              </div>  
             </div>
 
             <div className="space-y-2">
