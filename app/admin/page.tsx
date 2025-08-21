@@ -1,4 +1,3 @@
-// app/admin/page.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -127,22 +126,31 @@ function AdminLogin() {
 interface UserProfile {
   id: number
   user_id: number
-  name: string // Updated to non-optional based on NOT NULL and COALESCE
+  name: string
   email: string
   phone: string
   age: number
   gender: string
+  height?: string
+  weight?: string
   caste: string
   religion: string
+  mother_tongue?: string
+  marital_status: string
+  education: string
+  occupation: string
+  income?: string
   state: string
   city: string
-  occupation: string
-  education: string
-  marital_status: string
+  family_type?: string
+  family_status?: string
+  about_me?: string
+  partner_preferences?: string
   profile_photo: string
   status: "pending" | "approved" | "rejected"
   rejection_reason?: string
   created_at: string
+  updated_at?: string
 }
 
 interface Payment {
@@ -208,6 +216,13 @@ export default function AdminPage() {
   const [selectedMatches, setSelectedMatches] = useState<number[]>([])
   const [userProfile, setUserProfile] = useState<any>(null)
   const [loadingMatches, setLoadingMatches] = useState(false)
+  const [viewDialog, setViewDialog] = useState<{
+    open: boolean
+    profile: UserProfile | null
+  }>({
+    open: false,
+    profile: null
+  })
   
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -309,7 +324,6 @@ export default function AdminPage() {
 
       if (response.ok) {
         const data = await response.json()
-        // Ensure data is an array and filter out invalid profiles
         const profilesData = Array.isArray(data)
           ? data.filter((profile: UserProfile) => profile.name && typeof profile.name === 'string' && profile.name.length > 0)
           : []
@@ -578,9 +592,9 @@ export default function AdminPage() {
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-2">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
               <CardTitle className="text-sm font-medium">Total Users</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
@@ -816,6 +830,7 @@ export default function AdminPage() {
                               </span>
                               <span>{profile.caste}</span>
                               <span>{profile.occupation}</span>
+                              <span>{profile.gender}</span>
                             </div>
                             {profile.status === "rejected" && profile.rejection_reason && (
                               <p className="text-sm text-red-600">Reason: {profile.rejection_reason}</p>
@@ -824,7 +839,11 @@ export default function AdminPage() {
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setViewDialog({ open: true, profile })}
+                          >
                             <Eye className="h-4 w-4 mr-1" />
                             View
                           </Button>
@@ -1281,9 +1300,169 @@ export default function AdminPage() {
                 onClick={handlePaymentVerification}
               >
                 {paymentDialog.action === "verify" ? "Verify Payment" : "Reject Payment"}
-              </Button>
+             </Button>
+             
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Profile View Dialog */}
+      <Dialog open={viewDialog.open} onOpenChange={(open) => setViewDialog({ ...viewDialog, open })}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>User Profile Details</DialogTitle>
+            <DialogDescription>Complete information for {viewDialog.profile?.name || 'Unknown User'}</DialogDescription>
+          </DialogHeader>
+          {viewDialog.profile && (
+            <div className="space-y-6">
+              <div className="flex gap-6">
+                <div className="flex-shrink-0">
+                  <Avatar className="h-24 w-24">
+                    <AvatarImage src={viewDialog.profile.profile_photo || "/placeholder.svg"} />
+                    <AvatarFallback>{viewDialog.profile.name?.charAt(0) || '?'}</AvatarFallback>
+                  </Avatar>
+                </div>
+                <div className="flex-1 space-y-4">
+                  <div>
+                    <h3 className="text-lg font-medium">{viewDialog.profile.name || 'Unknown User'}</h3>
+                    <Badge
+                      variant={
+                        viewDialog.profile.status === "approved"
+                          ? "default"
+                          : viewDialog.profile.status === "rejected"
+                            ? "destructive"
+                            : "secondary"
+                      }
+                    >
+                      {viewDialog.profile.status}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Mail className="h-4 w-4 text-gray-500" />
+                        <span>{viewDialog.profile.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Phone className="h-4 w-4 text-gray-500" />
+                        <span>{viewDialog.profile.phone}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Calendar className="h-4 w-4 text-gray-500" />
+                        <span>{viewDialog.profile.age} years</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <User className="h-4 w-4 text-gray-500" />
+                        <span>{viewDialog.profile.gender}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm">
+                        <span className="font-medium">Caste: </span>{viewDialog.profile.caste}
+                      </div>
+                      <div className="text-sm">
+                        <span className="font-medium">Religion: </span>{viewDialog.profile.religion}
+                      </div>
+                      <div className="text-sm">
+                        <span className="font-medium">Marital Status: </span>{viewDialog.profile.marital_status}
+                      </div>
+                      <div className="text-sm">
+                        <span className="font-medium">Location: </span>{viewDialog.profile.city}, {viewDialog.profile.state}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    {viewDialog.profile.height && (
+                      <div className="text-sm">
+                        <span className="font-medium">Height: </span>{viewDialog.profile.height}
+                      </div>
+                    )}
+                    {viewDialog.profile.weight && (
+                      <div className="text-sm">
+                        <span className="font-medium">Weight: </span>{viewDialog.profile.weight}
+                      </div>
+                    )}
+                    <div className="text-sm">
+                      <span className="font-medium">Education: </span>{viewDialog.profile.education}
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium">Occupation: </span>{viewDialog.profile.occupation}
+                    </div>
+                    {viewDialog.profile.income && (
+                      <div className="text-sm">
+                        <span className="font-medium">Income: </span>{viewDialog.profile.income}
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {viewDialog.profile.mother_tongue && (
+                      <div className="text-sm">
+                        <span className="font-medium">Mother Tongue: </span>{viewDialog.profile.mother_tongue}
+                      </div>
+                    )}
+                    {viewDialog.profile.family_type && (
+                      <div className="text-sm">
+                        <span className="font-medium">Family Type: </span>{viewDialog.profile.family_type}
+                      </div>
+                    )}
+                    {viewDialog.profile.family_status && (
+                      <div className="text-sm">
+                        <span className="font-medium">Family Status: </span>{viewDialog.profile.family_status}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {viewDialog.profile.about_me && (
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">About Me</h4>
+                    <p className="text-sm text-gray-600">{viewDialog.profile.about_me}</p>
+                  </div>
+                )}
+
+                {viewDialog.profile.partner_preferences && (
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">Partner Preferences</h4>
+                    <p className="text-sm text-gray-600">{viewDialog.profile.partner_preferences}</p>
+                  </div>
+                )}
+
+                {viewDialog.profile.status === "rejected" && viewDialog.profile.rejection_reason && (
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 text-red-600">Rejection Reason</h4>
+                    <p className="text-sm text-red-600">{viewDialog.profile.rejection_reason}</p>
+                  </div>
+                )}
+
+                <div className="text-sm text-gray-500">
+                  <span className="font-medium">Created: </span>
+                  {new Date(viewDialog.profile.created_at).toLocaleDateString()}
+                  {viewDialog.profile.updated_at && (
+                    <>
+                      <span className="mx-2">|</span>
+                      <span className="font-medium">Updated: </span>
+                      {new Date(viewDialog.profile.updated_at).toLocaleDateString()}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setViewDialog({ open: false, profile: null })}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
