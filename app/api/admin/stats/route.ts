@@ -1,5 +1,7 @@
-import { NextResponse } from "next/server"
+// app/api/admin/stats/route.ts
+import { type NextRequest, NextResponse } from "next/server"
 import mysql from "mysql2/promise"
+import jwt from "jsonwebtoken"
 
 const dbConfig = {
   host: process.env.DB_HOST,
@@ -9,30 +11,65 @@ const dbConfig = {
   port: Number.parseInt(process.env.DB_PORT || "3306"),
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const authHeader = request.headers.get("authorization")
+    const token = authHeader?.replace("Bearer ", "")
+
+    if (!token) {
+      return NextResponse.json({ error: "No token provided" }, { status: 401 })
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
+
     const connection = await mysql.createConnection(dbConfig)
+
+    // Verify admin role
+    const [adminRows] = await connection.execute("SELECT role FROM users WHERE id = ?", [decoded.userId])
+    const admin = (adminRows as any[])[0]
+    if (!admin || admin.role !== "admin") {
+      await connection.end()
+      return NextResponse.json({ error: "Access denied" }, { status: 403 })
+    }
 
     // Get total users (excluding admins)
     const [userRows] = await connection.execute("SELECT COUNT(*) as count FROM users WHERE role = 'user'")
     const totalUsers = (userRows as any)[0].count
 
+    // Get active users
+    const [activeRows] = await connection.execute(
+      "SELECT COUNT(*) as count FROM users WHERE role = 'user' AND status = 'active'"
+    )
+    const activeUsers = (activeRows as any)[0].count
+
+    // Get male users (from profiles)
+    const [maleRows] = await connection.execute(`
+      SELECT COUNT(*) as count 
+      FROM user_profiles up 
+      JOIN users u ON up.user_id = u.id 
+      WHERE u.role = 'user' AND up.gender = 'Male'
+    `)
+    const maleUsers = (maleRows as any)[0].count
+
+    // Get female users (from profiles)
+    const [femaleRows] = await connection.execute(`
+      SELECT COUNT(*) as count 
+      FROM user_profiles up 
+      JOIN users u ON up.user_id = u.id 
+      WHERE u.role = 'user' AND up.gender = 'Female'
+    `)
+    const femaleUsers = (femaleRows as any)[0].count
+
     // Get pending profiles
-    const [pendingRows] = await connection.execute("SELECT COUNT(*) as count FROM user_profiles WHERE status = ?", [
-      "pending",
-    ])
+    const [pendingRows] = await connection.execute("SELECT COUNT(*) as count FROM user_profiles WHERE status = 'pending'")
     const pendingProfiles = (pendingRows as any)[0].count
 
     // Get approved profiles
-    const [approvedRows] = await connection.execute("SELECT COUNT(*) as count FROM user_profiles WHERE status = ?", [
-      "approved",
-    ])
+    const [approvedRows] = await connection.execute("SELECT COUNT(*) as count FROM user_profiles WHERE status = 'approved'")
     const approvedProfiles = (approvedRows as any)[0].count
 
     // Get rejected profiles
-    const [rejectedRows] = await connection.execute("SELECT COUNT(*) as count FROM user_profiles WHERE status = ?", [
-      "rejected",
-    ])
+    const [rejectedRows] = await connection.execute("SELECT COUNT(*) as count FROM user_profiles WHERE status = 'rejected'")
     const rejectedProfiles = (rejectedRows as any)[0].count
 
     // Get total matches
@@ -61,6 +98,9 @@ export async function GET() {
 
     return NextResponse.json({
       totalUsers,
+      activeUsers,
+      maleUsers,
+      femaleUsers,
       pendingProfiles,
       approvedProfiles,
       rejectedProfiles,
@@ -71,7 +111,7 @@ export async function GET() {
       recentRegistrations,
     })
   } catch (error) {
-    console.error("Database error:", error)
+    console.error("Admin stats fetch error:", error)
     return NextResponse.json({ error: "Failed to fetch stats" }, { status: 500 })
   }
 }

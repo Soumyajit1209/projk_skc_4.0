@@ -35,15 +35,27 @@ export async function GET(request: NextRequest) {
     // Get all payments with user and plan details
     const [rows] = await connection.execute(`
       SELECT 
-        p.id, p.transaction_id, p.amount, p.payment_method, p.screenshot,
-        p.status, p.admin_notes, p.created_at, p.verified_at,
-        u.id as user_id, u.name as user_name, u.email as user_email,
-        pl.name as plan_name, pl.price as plan_price,
+        p.id, 
+        p.transaction_id, 
+        p.amount, 
+        p.payment_method, 
+        p.screenshot,
+        p.status, 
+        p.admin_notes, 
+        p.created_at, 
+        p.verified_at,
+        u.id as user_id, 
+        u.name as user_name, 
+        u.email as user_email,
+        pl.name as plan_name, 
+        pl.price as plan_price,
+        pl.duration_months,
         va.name as verified_by_name
       FROM payments p
       JOIN users u ON p.user_id = u.id
       JOIN plans pl ON p.plan_id = pl.id
       LEFT JOIN users va ON p.verified_by = va.id
+      WHERE u.role = 'user'
       ORDER BY p.created_at DESC
     `)
 
@@ -96,7 +108,10 @@ export async function POST(request: NextRequest) {
 
     await connection.end()
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ 
+      success: true, 
+      message: `Payment ${status} successfully` 
+    })
   } catch (error) {
     console.error("Admin payment update error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

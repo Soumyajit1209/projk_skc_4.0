@@ -1,5 +1,7 @@
-import { NextResponse } from "next/server"
+// app/api/admin/profiles/route.ts
+import { type NextRequest, NextResponse } from "next/server"
 import mysql from "mysql2/promise"
+import jwt from "jsonwebtoken"
 
 const dbConfig = {
   host: process.env.DB_HOST,
@@ -9,8 +11,17 @@ const dbConfig = {
   port: Number.parseInt(process.env.DB_PORT || "3306"),
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    const authHeader = request.headers.get("authorization")
+    const token = authHeader?.replace("Bearer ", "")
+
+    if (!token) {
+      return NextResponse.json({ error: "No token provided" }, { status: 401 })
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
+
     const { searchParams } = new URL(request.url)
     const gender = searchParams.get("gender")
     const ageMin = searchParams.get("ageMin")
@@ -22,15 +33,51 @@ export async function GET(request: Request) {
 
     const connection = await mysql.createConnection(dbConfig)
 
+    // Verify admin role
+    const [adminRows] = await connection.execute("SELECT role FROM users WHERE id = ?", [decoded.userId])
+    const admin = (adminRows as any[])[0]
+    if (!admin || admin.role !== "admin") {
+      await connection.end()
+      return NextResponse.json({ error: "Access denied" }, { status: 403 })
+    }
+
+    // Updated query to properly join users and user_profiles tables
     let query = `
-      SELECT p.*, u.email, u.phone 
+      SELECT 
+        p.id,
+        p.user_id,
+        u.name,
+        u.email,
+        u.phone,
+        p.age,
+        p.gender,
+        p.height,
+        p.weight,
+        p.caste,
+        p.religion,
+        p.mother_tongue,
+        p.marital_status,
+        p.education,
+        p.occupation,
+        p.income,
+        p.state,
+        p.city,
+        p.family_type,
+        p.family_status,
+        p.about_me,
+        p.partner_preferences,
+        p.profile_photo,
+        p.status,
+        p.rejection_reason,
+        p.created_at,
+        p.updated_at
       FROM user_profiles p 
       JOIN users u ON p.user_id = u.id 
-      WHERE 1=1
+      WHERE u.role = 'user'
     `
     const params: any[] = []
 
-    if (gender) {
+    if (gender && gender !== 'all') {
       query += " AND p.gender = ?"
       params.push(gender)
     }
@@ -42,19 +89,19 @@ export async function GET(request: Request) {
       query += " AND p.age <= ?"
       params.push(Number.parseInt(ageMax))
     }
-    if (caste) {
-      query += " AND p.caste LIKE ?"
-      params.push(`%${caste}%`)
+    if (caste && caste !== 'all') {
+      query += " AND p.caste = ?"
+      params.push(caste)
     }
-    if (city) {
-      query += " AND p.city LIKE ?"
-      params.push(`%${city}%`)
+    if (city && city !== 'all') {
+      query += " AND p.city = ?"
+      params.push(city)
     }
-    if (state) {
-      query += " AND p.state LIKE ?"
-      params.push(`%${state}%`)
+    if (state && state !== 'all') {
+      query += " AND p.state = ?"
+      params.push(state)
     }
-    if (status) {
+    if (status && status !== 'all') {
       query += " AND p.status = ?"
       params.push(status)
     }
@@ -66,7 +113,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(rows)
   } catch (error) {
-    console.error("Database error:", error)
+    console.error("Admin profiles fetch error:", error)
     return NextResponse.json({ error: "Failed to fetch profiles" }, { status: 500 })
   }
 }
