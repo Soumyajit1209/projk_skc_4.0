@@ -202,8 +202,6 @@ export default function AdminPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("profiles")
-  
-  // State variables
   const [profiles, setProfiles] = useState<UserProfile[]>([])
   const [filteredProfiles, setFilteredProfiles] = useState<UserProfile[]>([])
   const [loadingProfiles, setLoadingProfiles] = useState(true)
@@ -265,7 +263,6 @@ export default function AdminPage() {
     adminNotes: ""
   })
 
-  // Fetch data when user is admin and not loading
   useEffect(() => {
     if (user?.role === "admin" && !loading) {
       fetchProfiles()
@@ -604,7 +601,7 @@ export default function AdminPage() {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
               <CardTitle className="text-sm font-medium">Active Users</CardTitle>
               <CheckCircle className="h-4 w-4 text-green-600" />
             </CardHeader>
@@ -614,7 +611,7 @@ export default function AdminPage() {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
               <CardTitle className="text-sm font-medium">Male Users</CardTitle>
               <User className="h-4 w-4 text-blue-600" />
             </CardHeader>
@@ -624,7 +621,7 @@ export default function AdminPage() {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
               <CardTitle className="text-sm font-medium">Female Users</CardTitle>
               <User className="h-4 w-4 text-pink-600" />
             </CardHeader>
@@ -652,7 +649,7 @@ export default function AdminPage() {
           </TabsList>
 
           {/* Profiles Tab */}
-          <TabsContent value="profiles" className="space-y-6">
+          <TabsContent value="profiles" className="space-y-3">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -960,7 +957,6 @@ export default function AdminPage() {
                           <p className="text-sm text-gray-600">{payment.user_email}</p>
                           <div className="flex items-center gap-4 text-sm text-gray-500">
                             <span className="flex items-center gap-1">
-                              <DollarSign className="h-3 w-3" />
                               ₹{payment.amount} - {payment.plan_name}
                             </span>
                             <span className="flex items-center gap-1">
