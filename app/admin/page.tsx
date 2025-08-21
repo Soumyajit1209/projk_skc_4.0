@@ -1,3 +1,4 @@
+// app/admin/page.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -12,12 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { 
   Users, Filter, Eye, Ban, CheckCircle, XCircle, Calendar, MapPin, User, 
-  CreditCard, Heart, UserPlus, FileText, DollarSign, Clock, Loader2, Mail, Phone
+  CreditCard, Heart, FileText, DollarSign, Clock, Loader2, Mail, Phone
 } from "lucide-react"
 import Image from "next/image"
 
@@ -122,11 +123,13 @@ function AdminLogin() {
   )
 }
 
-// Interfaces (same as before)
+// Interfaces
 interface UserProfile {
   id: number
-  name: string
+  user_id: number
+  name: string // Updated to non-optional based on NOT NULL and COALESCE
   email: string
+  phone: string
   age: number
   gender: string
   caste: string
@@ -192,10 +195,11 @@ export default function AdminPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("profiles")
   
-  // All the state variables (same as before)
+  // State variables
   const [profiles, setProfiles] = useState<UserProfile[]>([])
   const [filteredProfiles, setFilteredProfiles] = useState<UserProfile[]>([])
   const [loadingProfiles, setLoadingProfiles] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [payments, setPayments] = useState<Payment[]>([])
   const [loadingPayments, setLoadingPayments] = useState(true)
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
@@ -246,230 +250,14 @@ export default function AdminPage() {
     adminNotes: ""
   })
 
-  // Show login form if not authenticated or not admin
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Checking authentication...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!user || user.role !== "admin") {
-    return <AdminLogin />
-  }
-
-  // Rest of the component logic (fetch functions, handlers, etc.)
+  // Fetch data when user is admin and not loading
   useEffect(() => {
-    if (user?.role === "admin") {
+    if (user?.role === "admin" && !loading) {
       fetchProfiles()
       fetchStats()
       fetchPayments()
     }
-  }, [user])
-
-  const fetchProfiles = async () => {
-    try {
-      const token = localStorage.getItem("token")
-      const response = await fetch("/api/admin/profiles", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setProfiles(data.profiles)
-        setFilteredProfiles(data.profiles)
-      }
-    } catch (error) {
-      console.error("Error fetching profiles:", error)
-    } finally {
-      setLoadingProfiles(false)
-    }
-  }
-
-  const fetchStats = async () => {
-    try {
-      const token = localStorage.getItem("token")
-      const response = await fetch("/api/admin/stats", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setStats(data)
-      }
-    } catch (error) {
-      console.error("Error fetching stats:", error)
-    }
-  }
-
-  const fetchPayments = async () => {
-    try {
-      const token = localStorage.getItem("token")
-      const response = await fetch("/api/admin/payments", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setPayments(data.payments)
-      }
-    } catch (error) {
-      console.error("Error fetching payments:", error)
-    } finally {
-      setLoadingPayments(false)
-    }
-  }
-
-  const fetchMatches = async (userId: number) => {
-    setLoadingMatches(true)
-    try {
-      const token = localStorage.getItem("token")
-      const response = await fetch(`/api/admin/matches?userId=${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setPotentialMatches(data.potentialMatches)
-        setCurrentMatches(data.currentMatches)
-        setUserProfile(data.userProfile)
-      }
-    } catch (error) {
-      console.error("Error fetching matches:", error)
-    } finally {
-      setLoadingMatches(false)
-    }
-  }
-
-  const updateUserStatus = async (userId: number, status: string) => {
-    try {
-      const token = localStorage.getItem("token")
-      const response = await fetch("/api/admin/update-status", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ userId, status }),
-      })
-
-      if (response.ok) {
-        fetchProfiles()
-        fetchStats()
-      }
-    } catch (error) {
-      console.error("Error updating status:", error)
-    }
-  }
-
-  const handleProfileApproval = async () => {
-    if (!approvalDialog.profile || !approvalDialog.action) return
-
-    try {
-      const token = localStorage.getItem("token")
-      const response = await fetch("/api/admin/approve-profile", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          profileId: approvalDialog.profile.id,
-          status: approvalDialog.action === "approve" ? "approved" : "rejected",
-          rejectionReason: approvalDialog.rejectionReason,
-        }),
-      })
-
-      if (response.ok) {
-        fetchProfiles()
-        setApprovalDialog({ open: false, profile: null, action: null, rejectionReason: "" })
-      }
-    } catch (error) {
-      console.error("Error updating profile:", error)
-    }
-  }
-
-  const handlePaymentVerification = async () => {
-    if (!paymentDialog.payment || !paymentDialog.action) return
-
-    try {
-      const token = localStorage.getItem("token")
-      const response = await fetch("/api/admin/payments", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          paymentId: paymentDialog.payment.id,
-          status: paymentDialog.action === "verify" ? "verified" : "rejected",
-          adminNotes: paymentDialog.adminNotes,
-        }),
-      })
-
-      if (response.ok) {
-        fetchPayments()
-        setPaymentDialog({ open: false, payment: null, action: null, adminNotes: "" })
-      }
-    } catch (error) {
-      console.error("Error updating payment:", error)
-    }
-  }
-
-  const handleCreateMatches = async () => {
-    if (!selectedUserId || selectedMatches.length === 0) return
-
-    try {
-      const token = localStorage.getItem("token")
-      const response = await fetch("/api/admin/matches", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          userId: selectedUserId,
-          matchedUserIds: selectedMatches,
-        }),
-      })
-
-      if (response.ok) {
-        fetchMatches(selectedUserId)
-        setSelectedMatches([])
-      }
-    } catch (error) {
-      console.error("Error creating matches:", error)
-    }
-  }
-
-  const handleRemoveMatch = async (matchedUserId: number) => {
-    if (!selectedUserId) return
-
-    try {
-      const token = localStorage.getItem("token")
-      const response = await fetch("/api/admin/matches", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          userId: selectedUserId,
-          matchedUserId,
-        }),
-      })
-
-      if (response.ok) {
-        fetchMatches(selectedUserId)
-      }
-    } catch (error) {
-      console.error("Error removing match:", error)
-    }
-  }
+  }, [user, loading])
 
   // Apply filters
   useEffect(() => {
@@ -478,8 +266,9 @@ export default function AdminPage() {
     if (filters.search) {
       filtered = filtered.filter(
         (profile) =>
-          profile.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-          profile.email.toLowerCase().includes(filters.search.toLowerCase()),
+          profile.name &&
+          (profile.name.toLowerCase().includes(filters.search.toLowerCase()) ||
+           profile.email.toLowerCase().includes(filters.search.toLowerCase()))
       )
     }
 
@@ -510,19 +299,251 @@ export default function AdminPage() {
     setFilteredProfiles(filtered)
   }, [filters, profiles])
 
+  // Fetch profiles
+  const fetchProfiles = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch("/api/admin/profiles", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        // Ensure data is an array and filter out invalid profiles
+        const profilesData = Array.isArray(data)
+          ? data.filter((profile: UserProfile) => profile.name && typeof profile.name === 'string' && profile.name.length > 0)
+          : []
+        setProfiles(profilesData)
+        setFilteredProfiles(profilesData)
+        setError(null)
+      } else {
+        console.error("API response not OK:", response.status, response.statusText)
+        setProfiles([])
+        setFilteredProfiles([])
+        setError("Failed to load profiles. Please try again.")
+      }
+    } catch (error) {
+      console.error("Error fetching profiles:", error)
+      setProfiles([])
+      setFilteredProfiles([])
+      setError("Network error while fetching profiles. Please check your connection.")
+    } finally {
+      setLoadingProfiles(false)
+    }
+  }
+
+  // Fetch stats
+  const fetchStats = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch("/api/admin/stats", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setStats(data)
+      }
+    } catch (error) {
+      console.error("Error fetching stats:", error)
+    }
+  }
+
+  // Fetch payments
+  const fetchPayments = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch("/api/admin/payments", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setPayments(data.payments || [])
+      }
+    } catch (error) {
+      console.error("Error fetching payments:", error)
+      setPayments([])
+    } finally {
+      setLoadingPayments(false)
+    }
+  }
+
+  // Fetch matches
+  const fetchMatches = async (userId: number) => {
+    setLoadingMatches(true)
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch(`/api/admin/matches?userId=${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setPotentialMatches(data.potentialMatches || [])
+        setCurrentMatches(data.currentMatches || [])
+        setUserProfile(data.userProfile || null)
+      }
+    } catch (error) {
+      console.error("Error fetching matches:", error)
+    } finally {
+      setLoadingMatches(false)
+    }
+  }
+
+  // Update user status
+  const updateUserStatus = async (userId: number, status: string) => {
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch("/api/admin/update-status", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId, status }),
+      })
+
+      if (response.ok) {
+        fetchProfiles()
+        fetchStats()
+      }
+    } catch (error) {
+      console.error("Error updating status:", error)
+    }
+  }
+
+  // Handle profile approval
+  const handleProfileApproval = async () => {
+    if (!approvalDialog.profile || !approvalDialog.action) return
+
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch("/api/admin/approve-profile", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          profileId: approvalDialog.profile.id,
+          status: approvalDialog.action === "approve" ? "approved" : "rejected",
+          rejectionReason: approvalDialog.rejectionReason,
+        }),
+      })
+
+      if (response.ok) {
+        fetchProfiles()
+        setApprovalDialog({ open: false, profile: null, action: null, rejectionReason: "" })
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error)
+    }
+  }
+
+  // Handle payment verification
+  const handlePaymentVerification = async () => {
+    if (!paymentDialog.payment || !paymentDialog.action) return
+
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch("/api/admin/payments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          paymentId: paymentDialog.payment.id,
+          status: paymentDialog.action === "verify" ? "verified" : "rejected",
+          adminNotes: paymentDialog.adminNotes,
+        }),
+      })
+
+      if (response.ok) {
+        fetchPayments()
+        setPaymentDialog({ open: false, payment: null, action: null, adminNotes: "" })
+      }
+    } catch (error) {
+      console.error("Error updating payment:", error)
+    }
+  }
+
+  // Create matches
+  const handleCreateMatches = async () => {
+    if (!selectedUserId || selectedMatches.length === 0) return
+
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch("/api/admin/matches", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId: selectedUserId,
+          matchedUserIds: selectedMatches,
+        }),
+      })
+
+      if (response.ok) {
+        fetchMatches(selectedUserId)
+        setSelectedMatches([])
+      }
+    } catch (error) {
+      console.error("Error creating matches:", error)
+    }
+  }
+
+  // Remove match
+  const handleRemoveMatch = async (matchedUserId: number) => {
+    if (!selectedUserId) return
+
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch("/api/admin/matches", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId: selectedUserId,
+          matchedUserId,
+        }),
+      })
+
+      if (response.ok) {
+        fetchMatches(selectedUserId)
+      }
+    } catch (error) {
+      console.error("Error removing match:", error)
+    }
+  }
+
+  // Get unique values for filters
   const getUniqueValues = (key: keyof UserProfile) => {
+    if (!Array.isArray(profiles)) {
+      return []
+    }
     return [...new Set(profiles.map((profile) => profile[key]))].filter(Boolean)
   }
 
-  if (loadingProfiles) {
+  // Conditional rendering after all Hooks
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading admin dashboard...</p>
+          <p className="text-gray-600">Checking authentication...</p>
         </div>
       </div>
     )
+  }
+
+  if (!user || user.role !== "admin") {
+    return <AdminLogin />
   }
 
   return (
@@ -549,6 +570,13 @@ export default function AdminPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Error Alert */}
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
@@ -592,7 +620,7 @@ export default function AdminPage() {
           </Card>
         </div>
 
-        {/* Rest of the dashboard content - same as before */}
+        {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="profiles" className="flex items-center gap-2">
@@ -611,7 +639,6 @@ export default function AdminPage() {
 
           {/* Profiles Tab */}
           <TabsContent value="profiles" className="space-y-6">
-            {/* Filters */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -621,246 +648,256 @@ export default function AdminPage() {
                 <CardDescription>Filter profiles by various criteria</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                  <div className="md:col-span-2">
-                    <Input
-                      placeholder="Search by name or email..."
-                      value={filters.search}
-                      onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-                      className="w-full"
-                    />
+                {loadingProfiles ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading profiles...</p>
                   </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                    <div className="md:col-span-2">
+                      <Input
+                        placeholder="Search by name or email..."
+                        value={filters.search}
+                        onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+                        className="w-full"
+                      />
+                    </div>
 
-                  <Select
-                    value={filters.caste}
-                    onValueChange={(value) => setFilters((prev) => ({ ...prev, caste: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Caste" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Castes</SelectItem>
-                      {getUniqueValues("caste").map((caste) => (
-                        <SelectItem key={caste} value={caste as string}>
-                          {caste}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <Select
+                      value={filters.caste}
+                      onValueChange={(value) => setFilters((prev) => ({ ...prev, caste: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Caste" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Castes</SelectItem>
+                        {getUniqueValues("caste").map((caste) => (
+                          <SelectItem key={caste} value={caste as string}>
+                            {caste}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
 
-                  <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      placeholder="Min Age"
-                      value={filters.ageMin}
-                      onChange={(e) => setFilters((prev) => ({ ...prev, ageMin: e.target.value }))}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Max Age"
-                      value={filters.ageMax}
-                      onChange={(e) => setFilters((prev) => ({ ...prev, ageMax: e.target.value }))}
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        placeholder="Min Age"
+                        value={filters.ageMin}
+                        onChange={(e) => setFilters((prev) => ({ ...prev, ageMin: e.target.value }))}
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Max Age"
+                        value={filters.ageMax}
+                        onChange={(e) => setFilters((prev) => ({ ...prev, ageMax: e.target.value }))}
+                      />
+                    </div>
+
+                    <Select
+                      value={filters.state}
+                      onValueChange={(value) => setFilters((prev) => ({ ...prev, state: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="State" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All States</SelectItem>
+                        {getUniqueValues("state").map((state) => (
+                          <SelectItem key={state} value={state as string}>
+                            {state}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select
+                      value={filters.gender}
+                      onValueChange={(value) => setFilters((prev) => ({ ...prev, gender: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Genders</SelectItem>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <Select
+                      value={filters.status}
+                      onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
+                )}
 
-                  <Select
-                    value={filters.state}
-                    onValueChange={(value) => setFilters((prev) => ({ ...prev, state: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="State" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All States</SelectItem>
-                      {getUniqueValues("state").map((state) => (
-                        <SelectItem key={state} value={state as string}>
-                          {state}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <Select
-                    value={filters.gender}
-                    onValueChange={(value) => setFilters((prev) => ({ ...prev, gender: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Gender" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Genders</SelectItem>
-                      <SelectItem value="Male">Male</SelectItem>
-                      <SelectItem value="Female">Female</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select
-                    value={filters.status}
-                    onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="approved">Approved</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      setFilters({
-                        search: "",
-                        caste: "all",
-                        ageMin: "",
-                        ageMax: "",
-                        state: "all",
-                        gender: "all",
-                        status: "all",
-                      })
-                    }
-                  >
-                    Clear Filters
-                  </Button>
-                  <div className="text-sm text-gray-600 flex items-center">
-                    Showing {filteredProfiles.length} of {profiles.length} profiles
+                {!loadingProfiles && (
+                  <div className="mt-4 flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        setFilters({
+                          search: "",
+                          caste: "all",
+                          ageMin: "",
+                          ageMax: "",
+                          state: "all",
+                          gender: "all",
+                          status: "all",
+                        })
+                      }
+                    >
+                      Clear Filters
+                    </Button>
+                    <div className="text-sm text-gray-600 flex items-center">
+                      Showing {filteredProfiles.length} of {profiles.length} profiles
+                    </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* Profiles List */}
-            <Card>
-              <CardHeader>
-                <CardTitle>User Profiles</CardTitle>
-                <CardDescription>Manage and moderate user profiles</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {filteredProfiles.map((profile) => (
-                    <div
-                      key={profile.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-                    >
-                      <div className="flex items-center gap-4">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={profile.profile_photo || "/placeholder.svg"} />
-                          <AvatarFallback>{profile.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
+            {!loadingProfiles && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>User Profiles</CardTitle>
+                  <CardDescription>Manage and moderate user profiles</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {filteredProfiles.map((profile) => (
+                      <div
+                        key={profile.id}
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                      >
+                        <div className="flex items-center gap-4">
+                          <Avatar className="h-12 w-12">
+                            <AvatarImage src={profile.profile_photo || "/placeholder.svg"} />
+                            <AvatarFallback>{profile.name && profile.name.length > 0 ? profile.name.charAt(0) : '?'}</AvatarFallback>
+                          </Avatar>
 
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium">{profile.name}</h3>
-                            <Badge
-                              variant={
-                                profile.status === "approved"
-                                  ? "default"
-                                  : profile.status === "rejected"
-                                    ? "destructive"
-                                    : "secondary"
-                              }
-                            >
-                              {profile.status}
-                            </Badge>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-medium">{profile.name || 'Unknown User'}</h3>
+                              <Badge
+                                variant={
+                                  profile.status === "approved"
+                                    ? "default"
+                                    : profile.status === "rejected"
+                                      ? "destructive"
+                                      : "secondary"
+                                }
+                              >
+                                {profile.status}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-gray-600">{profile.email}</p>
+                            <div className="flex items-center gap-4 text-xs text-gray-500">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {profile.age} years
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {profile.city}, {profile.state}
+                              </span>
+                              <span>{profile.caste}</span>
+                              <span>{profile.occupation}</span>
+                            </div>
+                            {profile.status === "rejected" && profile.rejection_reason && (
+                              <p className="text-sm text-red-600">Reason: {profile.rejection_reason}</p>
+                            )}
                           </div>
-                          <p className="text-sm text-gray-600">{profile.email}</p>
-                          <div className="flex items-center gap-4 text-xs text-gray-500">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {profile.age} years
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />
-                              {profile.city}, {profile.state}
-                            </span>
-                            <span>{profile.caste}</span>
-                            <span>{profile.occupation}</span>
-                          </div>
-                          {profile.status === "rejected" && profile.rejection_reason && (
-                            <p className="text-sm text-red-600">Reason: {profile.rejection_reason}</p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm">
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+
+                          {profile.status === "pending" && (
+                            <>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() =>
+                                  setApprovalDialog({
+                                    open: true,
+                                    profile,
+                                    action: "approve",
+                                    rejectionReason: "",
+                                  })
+                                }
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Approve
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() =>
+                                  setApprovalDialog({
+                                    open: true,
+                                    profile,
+                                    action: "reject",
+                                    rejectionReason: "",
+                                  })
+                                }
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                Reject
+                              </Button>
+                            </>
                           )}
+
+                          {profile.status === "approved" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedUserId(profile.user_id)
+                                fetchMatches(profile.user_id)
+                                setActiveTab("matches")
+                              }}
+                            >
+                              <Heart className="h-4 w-4 mr-1" />
+                              Create Matches
+                            </Button>
+                          )}
+
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => updateUserStatus(profile.user_id, "banned")}
+                          >
+                            <Ban className="h-4 w-4 mr-1" />
+                            Ban
+                          </Button>
                         </div>
                       </div>
+                    ))}
 
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm">
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
-                        </Button>
-
-                        {profile.status === "pending" && (
-                          <>
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() =>
-                                setApprovalDialog({
-                                  open: true,
-                                  profile,
-                                  action: "approve",
-                                  rejectionReason: "",
-                                })
-                              }
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Approve
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() =>
-                                setApprovalDialog({
-                                  open: true,
-                                  profile,
-                                  action: "reject",
-                                  rejectionReason: "",
-                                })
-                              }
-                            >
-                              <XCircle className="h-4 w-4 mr-1" />
-                              Reject
-                            </Button>
-                          </>
-                        )}
-
-                        {profile.status === "approved" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedUserId(profile.id)
-                              fetchMatches(profile.id)
-                              setActiveTab("matches")
-                            }}
-                          >
-                            <Heart className="h-4 w-4 mr-1" />
-                            Create Matches
-                          </Button>
-                        )}
-
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => updateUserStatus(profile.id, "banned")}
-                        >
-                          <Ban className="h-4 w-4 mr-1" />
-                          Ban
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-
-                  {filteredProfiles.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">No profiles found matching your criteria</div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                    {filteredProfiles.length === 0 && (
+                      <div className="text-center py-8 text-gray-500">No profiles found matching your criteria</div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Payments Tab */}
@@ -888,7 +925,7 @@ export default function AdminPage() {
                       >
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
-                            <h3 className="font-medium">{payment.user_name}</h3>
+                            <h3 className="font-medium">{payment.user_name || 'Unknown User'}</h3>
                             <Badge
                               variant={
                                 payment.status === "verified"
@@ -998,7 +1035,7 @@ export default function AdminPage() {
                 <div className="space-y-4">
                   {/* User Selection */}
                   <div>
-                    <label className="text-sm font-medium">Select User to Create Matches For:</label>
+                    <Label className="text-sm font-medium">Select User to Create Matches For:</Label>
                     <Select
                       value={selectedUserId?.toString() || ""}
                       onValueChange={(value) => {
@@ -1014,8 +1051,8 @@ export default function AdminPage() {
                         {profiles
                           .filter((p) => p.status === "approved")
                           .map((profile) => (
-                            <SelectItem key={profile.id} value={profile.id.toString()}>
-                              {profile.name} ({profile.age}y, {profile.gender}, {profile.caste})
+                            <SelectItem key={profile.user_id} value={profile.user_id.toString()}>
+                              {profile.name || 'Unknown User'} ({profile.age}y, {profile.gender}, {profile.caste})
                             </SelectItem>
                           ))}
                       </SelectContent>
@@ -1027,7 +1064,7 @@ export default function AdminPage() {
                       {/* User Info */}
                       <div className="p-4 bg-blue-50 rounded-lg">
                         <h3 className="font-medium text-blue-900">
-                          Creating matches for: {profiles.find((p) => p.id === selectedUserId)?.name}
+                          Creating matches for: {(profiles.find((p) => p.user_id === selectedUserId)?.name || 'Unknown User')}
                         </h3>
                         <p className="text-sm text-blue-700">
                           {userProfile.age} years, {userProfile.gender}, {userProfile.caste}, {userProfile.state}
@@ -1073,10 +1110,10 @@ export default function AdminPage() {
                                     />
                                     <Avatar className="h-8 w-8">
                                       <AvatarImage src={match.profile_photo || "/placeholder.svg"} />
-                                      <AvatarFallback>{match.name.charAt(0)}</AvatarFallback>
+                                      <AvatarFallback>{match.name && match.name.length > 0 ? match.name.charAt(0) : '?'}</AvatarFallback>
                                     </Avatar>
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium truncate">{match.name}</p>
+                                      <p className="text-sm font-medium truncate">{match.name || 'Unknown User'}</p>
                                       <p className="text-xs text-gray-500">
                                         {match.age}y, {match.caste}, {match.city}, {match.state}
                                       </p>
@@ -1101,10 +1138,10 @@ export default function AdminPage() {
                                 >
                                   <div className="flex items-center space-x-3">
                                     <Avatar className="h-8 w-8">
-                                      <AvatarFallback>{match.name.charAt(0)}</AvatarFallback>
+                                      <AvatarFallback>{match.name && match.name.length > 0 ? match.name.charAt(0) : '?'}</AvatarFallback>
                                     </Avatar>
                                     <div>
-                                      <p className="text-sm font-medium">{match.name}</p>
+                                      <p className="text-sm font-medium">{match.name || 'Unknown User'}</p>
                                       <p className="text-xs text-gray-500">
                                         {match.age}y, {match.caste}, {match.city}, {match.state}
                                       </p>
@@ -1154,7 +1191,7 @@ export default function AdminPage() {
           <div className="space-y-4">
             {approvalDialog.profile && (
               <div className="p-4 bg-gray-50 rounded-lg">
-                <h3 className="font-medium">{approvalDialog.profile.name}</h3>
+                <h3 className="font-medium">{approvalDialog.profile.name || 'Unknown User'}</h3>
                 <p className="text-sm text-gray-600">{approvalDialog.profile.email}</p>
                 <p className="text-sm text-gray-500">
                   {approvalDialog.profile.age}y, {approvalDialog.profile.gender}, {approvalDialog.profile.caste}
@@ -1164,7 +1201,7 @@ export default function AdminPage() {
             
             {approvalDialog.action === "reject" && (
               <div>
-                <label className="text-sm font-medium">Rejection Reason</label>
+                <Label className="text-sm font-medium">Rejection Reason</Label>
                 <Textarea
                   value={approvalDialog.rejectionReason}
                   onChange={(e) =>
@@ -1211,7 +1248,7 @@ export default function AdminPage() {
           <div className="space-y-4">
             {paymentDialog.payment && (
               <div className="p-4 bg-gray-50 rounded-lg">
-                <h3 className="font-medium">{paymentDialog.payment.user_name}</h3>
+                <h3 className="font-medium">{paymentDialog.payment.user_name || 'Unknown User'}</h3>
                 <p className="text-sm text-gray-600">{paymentDialog.payment.user_email}</p>
                 <p className="text-sm text-gray-500">
                   ₹{paymentDialog.payment.amount} - {paymentDialog.payment.plan_name}
@@ -1221,7 +1258,7 @@ export default function AdminPage() {
             )}
             
             <div>
-              <label className="text-sm font-medium">Admin Notes</label>
+              <Label className="text-sm font-medium">Admin Notes</Label>
               <Textarea
                 value={paymentDialog.adminNotes}
                 onChange={(e) =>

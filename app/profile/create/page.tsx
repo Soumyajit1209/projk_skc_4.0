@@ -10,8 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { FileUpload } from "@/components/file-upload"
-import { Heart, ArrowLeft } from "lucide-react"
-import Link from "next/link"
+import { Heart} from "lucide-react"
 
 export default function CreateProfilePage() {
   const { user, loading } = useAuth()
@@ -78,7 +77,6 @@ export default function CreateProfilePage() {
       
       if (response.ok) {
         setSuccess(true)
-        // Wait a moment to show success message, then redirect
         setTimeout(() => {
           router.push("/dashboard")
         }, 1500)
