@@ -17,7 +17,7 @@ import { FileUpload } from "@/components/file-upload"
 import { 
   Heart, Settings, LogOut, CreditCard, Check, Crown, Star, Zap, QrCode, Copy, Edit, Save, X, 
   User, MapPin, Briefcase, GraduationCap, Bell, Search, Filter, Phone, MessageCircle, 
-  Users, Calendar, DollarSign, Home, UserCheck, Clock, PhoneCall, Video, Mail, Info
+  Users, Calendar, DollarSign, Home, UserCheck, Clock, PhoneCall, Video, Mail, Info, Lock
 } from "lucide-react"
 import Image from "next/image"
 
@@ -84,6 +84,10 @@ export default function DashboardPage() {
   const [editingProfile, setEditingProfile] = useState(false)
   const [editError, setEditError] = useState("")
   const [editSuccess, setEditSuccess] = useState(false)
+  const [showChangePassword, setShowChangePassword] = useState(false)
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [passwordError, setPasswordError] = useState("")
+  const [passwordSuccess, setPasswordSuccess] = useState(false)
   const [showProfileDetails, setShowProfileDetails] = useState(false)
   const [selectedMatch, setSelectedMatch] = useState<UserProfile | null>(null)
   const [loadingProfileDetails, setLoadingProfileDetails] = useState(false)
@@ -106,6 +110,12 @@ export default function DashboardPage() {
     about_me: "",
     partner_preferences: "",
     profile_photo: "",
+  })
+
+  const [passwordFormData, setPasswordFormData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   })
 
   useEffect(() => {
@@ -255,8 +265,23 @@ export default function DashboardPage() {
     setEditSuccess(false)
   }
 
+  const handleChangePassword = () => {
+    setShowChangePassword(true)
+    setPasswordError("")
+    setPasswordSuccess(false)
+    setPasswordFormData({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    })
+  }
+
   const handleEditInputChange = (field: string, value: string) => {
     setEditFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handlePasswordInputChange = (field: string, value: string) => {
+    setPasswordFormData((prev) => ({ ...prev, [field]: value }))
   }
 
   const handleEditSubmit = async (e: React.FormEvent) => {
@@ -292,6 +317,62 @@ export default function DashboardPage() {
       setEditError("An error occurred while updating your profile")
     } finally {
       setEditingProfile(false)
+    }
+  }
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setChangingPassword(true)
+    setPasswordError("")
+    setPasswordSuccess(false)
+
+    // Client-side validation
+    if (passwordFormData.newPassword !== passwordFormData.confirmPassword) {
+      setPasswordError("New passwords do not match")
+      setChangingPassword(false)
+      return
+    }
+
+    if (passwordFormData.newPassword.length < 6) {
+      setPasswordError("New password must be at least 6 characters long")
+      setChangingPassword(false)
+      return
+    }
+
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch("/api/user/change-password", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          currentPassword: passwordFormData.currentPassword,
+          newPassword: passwordFormData.newPassword,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setPasswordSuccess(true)
+        setPasswordFormData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        })
+        setTimeout(() => {
+          setShowChangePassword(false)
+          setPasswordSuccess(false)
+        }, 2000)
+      } else {
+        setPasswordError(data.error || "Failed to change password")
+      }
+    } catch (error) {
+      setPasswordError("An error occurred while changing your password")
+    } finally {
+      setChangingPassword(false)
     }
   }
 
@@ -399,10 +480,16 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <Button variant="outline" className="w-full" onClick={handleEditProfile}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Profile
-                </Button>
+                <div className="space-y-2">
+                  <Button variant="outline" className="w-full" onClick={handleEditProfile}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                  <Button variant="outline" className="w-full" onClick={handleChangePassword}>
+                    <Lock className="h-4 w-4 mr-2" />
+                    Change Password
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
@@ -576,7 +663,7 @@ export default function DashboardPage() {
                           Get expert-curated matches based on compatibility
                         </p>
                         <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700" onClick={handleBrowsePlans}>
-                          Upgrade to Premium
+                          Upgrade
                         </Button>
                       </div>
                     </div>
@@ -597,9 +684,6 @@ export default function DashboardPage() {
           
           {selectedMatch && (
             <div className="space-y-4">
-
-
-              
               {/* Compact Profile Header */}
               <div className="relative bg-blue-500 rounded-lg p-4 text-white">
                 <div className="flex items-start justify-between">
@@ -1008,6 +1092,101 @@ export default function DashboardPage() {
                 {editingProfile ? "Updating..." : "Update Profile"}
               </Button>
               <Button type="button" variant="outline" onClick={() => setShowEditProfile(false)}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Password Modal */}
+      <Dialog open={showChangePassword} onOpenChange={setShowChangePassword}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center">
+              <Lock className="h-5 w-5 mr-2 text-blue-500" />
+              Change Password
+            </DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            {passwordError && (
+              <Alert variant="destructive">
+                <AlertDescription>{passwordError}</AlertDescription>
+              </Alert>
+            )}
+
+            {passwordSuccess && (
+              <Alert className="bg-green-50 border-green-200 text-green-700">
+                <AlertDescription>Password changed successfully!</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="currentPassword">Current Password *</Label>
+                <Input 
+                  id="currentPassword"
+                  type="password" 
+                  value={passwordFormData.currentPassword} 
+                  onChange={(e) => handlePasswordInputChange("currentPassword", e.target.value)} 
+                  required
+                  placeholder="Enter your current password"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="newPassword">New Password *</Label>
+                <Input 
+                  id="newPassword"
+                  type="password" 
+                  value={passwordFormData.newPassword} 
+                  onChange={(e) => handlePasswordInputChange("newPassword", e.target.value)} 
+                  required
+                  placeholder="Enter new password (min. 6 characters)"
+                  minLength={6}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="confirmPassword">Confirm New Password *</Label>
+                <Input 
+                  id="confirmPassword"
+                  type="password" 
+                  value={passwordFormData.confirmPassword} 
+                  onChange={(e) => handlePasswordInputChange("confirmPassword", e.target.value)} 
+                  required
+                  placeholder="Confirm your new password"
+                  minLength={6}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button 
+                type="submit" 
+                className="flex-1 bg-blue-600 hover:bg-blue-700" 
+                disabled={changingPassword}
+              >
+                {changingPassword ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Changing...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-4 w-4 mr-2" />
+                    Change Password
+                  </>
+                )}
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => setShowChangePassword(false)}
+                disabled={changingPassword}
+              >
                 Cancel
               </Button>
             </div>

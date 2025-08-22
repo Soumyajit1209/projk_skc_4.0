@@ -8,48 +8,80 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { 
   Users, Filter, Eye, Ban, CheckCircle, XCircle, Calendar, MapPin, User, 
-  CreditCard, Heart, FileText, DollarSign, Clock, Loader2, Mail, Phone
+  CreditCard, Heart, FileText, DollarSign, Clock, Loader2, Mail, Phone, Settings
 } from "lucide-react"
 import Image from "next/image"
+import AdminSettings from "@/components/admin/AdminSettings"
+import ReactCountryFlag from "react-country-flag"
+
+const countryCodes = [
+  { code: "+1", countryCode: "US", country: "US" },
+  { code: "+44", countryCode: "GB", country: "UK" },
+  { code: "+91", countryCode: "IN", country: "IN" },
+]
+interface AuthContext {
+  login: (identifier: string, password: string, role: string) => Promise<boolean>
+}
 
 // Admin Login Component
 function AdminLogin() {
   const [identifier, setIdentifier] = useState("")
   const [password, setPassword] = useState("")
+  const [countryCode, setCountryCode] = useState("+91")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const { login } = useAuth()
+  const router = useRouter()
+  const { login } = useAuth() as AuthContext
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setIsLoading(true)
 
+    // Validate inputs
+    if (!identifier.trim()) {
+      setError("Please enter a username, email, or phone number")
+      setIsLoading(false)
+      return
+    }
+    if (isPhone && !countryCode) {
+      setError("Please select a country code for phone number")
+      setIsLoading(false)
+      return
+    }
+
+    // Combine country code with phone number if applicable
+    const finalIdentifier = isPhone ? `${countryCode}${identifier}` : identifier
+
     try {
-      const success = await login(identifier, password, "admin")
+      const success = await login(finalIdentifier, password, "admin")
       
-      if (!success) {
+      if (success) {
+        router.push("/admin")
+      } else {
         setError("Invalid credentials or insufficient permissions")
       }
     } catch (error) {
       setError("Network error. Please try again.")
+      console.error("Login error:", error) // Log error for debugging
     } finally {
       setIsLoading(false)
     }
   }
 
+  // Determine input type for icon and placeholder
   const isEmail = identifier.includes("@")
-  const isPhone = /^\d+$/.test(identifier)
-  const isUsername = !isEmail && !isPhone && identifier.length > 0
+  const isPhone = /^\d+$/.test(identifier.trim())
+  const isUsername = !isEmail && !isPhone && identifier.trim().length > 0
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-gray-100 p-4">
@@ -71,26 +103,57 @@ function AdminLogin() {
 
             <div className="space-y-2">
               <Label htmlFor="identifier">Username, Email, or Phone</Label>
-              <div className="relative">
-                <Input
-                  id="identifier"
-                  type="text"
-                  placeholder="Enter username, email, or phone"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  required
-                  className="pl-10"
-                />
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-                  {isEmail ? (
-                    <Mail className="h-4 w-4 text-gray-400" />
-                  ) : isPhone ? (
-                    <Phone className="h-4 w-4 text-gray-400" />
-                  ) : (
-                    <User className="h-4 w-4 text-gray-400" />
+              <div className="relative flex items-center">
+                {isPhone && (
+                  <Select 
+                    value={countryCode} 
+                    onValueChange={setCountryCode}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger className="w-[140px] mr-2">
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {countryCodes.map(({ code, countryCode, country }) => (
+                        <SelectItem key={code} value={code}>
+                          <div className="flex items-center">
+                            <ReactCountryFlag
+                              countryCode={countryCode}
+                              svg
+                              className="mr-2"
+                              style={{ width: "1.5em", height: "1.5em" }}
+                            />
+                            {code} ({country})
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <div className="relative flex-1">
+                  <Input
+                    id="identifier"
+                    type="text"
+                    placeholder={isPhone ? "Enter phone number" : "Enter username, email, or phone"}
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    required
+                    className={isPhone ? "pl-4" : "pl-10"}
+                    disabled={isLoading}
+                  />
+                  {!isPhone && (
+                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                      {isEmail ? (
+                        <Mail className="h-4 w-4 text-gray-400" />
+                      ) : isUsername ? (
+                        <User className="h-4 w-4 text-gray-400" />
+                      ) : (
+                        <Phone className="h-4 w-4 text-gray-400" />
+                      )}
+                    </div>
                   )}
                 </div>
-              </div>  
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -102,6 +165,7 @@ function AdminLogin() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={isLoading}
               />
             </div>
 
@@ -116,6 +180,53 @@ function AdminLogin() {
               )}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// Stats Cards Component
+function StatsCards({ stats }: { stats: any }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+          <Users className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.totalUsers}</div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+          <CheckCircle className="h-4 w-4 text-green-600" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.activeUsers}</div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Male Users</CardTitle>
+          <User className="h-4 w-4 text-blue-600" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.maleUsers}</div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Female Users</CardTitle>
+          <User className="h-4 w-4 text-pink-600" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.femaleUsers}</div>
         </CardContent>
       </Card>
     </div>
@@ -221,7 +332,7 @@ export default function AdminPage() {
     open: false,
     profile: null
   })
-  
+
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeUsers: 0,
@@ -328,13 +439,11 @@ export default function AdminPage() {
         setFilteredProfiles(profilesData)
         setError(null)
       } else {
-        console.error("API response not OK:", response.status, response.statusText)
         setProfiles([])
         setFilteredProfiles([])
         setError("Failed to load profiles. Please try again.")
       }
     } catch (error) {
-      console.error("Error fetching profiles:", error)
       setProfiles([])
       setFilteredProfiles([])
       setError("Network error while fetching profiles. Please check your connection.")
@@ -402,28 +511,6 @@ export default function AdminPage() {
     }
   }
 
-  // Update user status
-  const updateUserStatus = async (userId: number, status: string) => {
-    try {
-      const token = localStorage.getItem("token")
-      const response = await fetch("/api/admin/update-status", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ userId, status }),
-      })
-
-      if (response.ok) {
-        fetchProfiles()
-        fetchStats()
-      }
-    } catch (error) {
-      console.error("Error updating status:", error)
-    }
-  }
-
   // Handle profile approval
   const handleProfileApproval = async () => {
     if (!approvalDialog.profile || !approvalDialog.action) return
@@ -445,6 +532,7 @@ export default function AdminPage() {
 
       if (response.ok) {
         fetchProfiles()
+        fetchStats()
         setApprovalDialog({ open: false, profile: null, action: null, rejectionReason: "" })
       }
     } catch (error) {
@@ -477,6 +565,28 @@ export default function AdminPage() {
       }
     } catch (error) {
       console.error("Error updating payment:", error)
+    }
+  }
+
+  // Update user status
+  const updateUserStatus = async (userId: number, status: string) => {
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch("/api/admin/update-status", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId, status }),
+      })
+
+      if (response.ok) {
+        fetchProfiles()
+        fetchStats()
+      }
+    } catch (error) {
+      console.error("Error updating status:", error)
     }
   }
 
@@ -541,7 +651,7 @@ export default function AdminPage() {
     return [...new Set(profiles.map((profile) => profile[key]))].filter(Boolean)
   }
 
-  // Conditional rendering after all Hooks
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -553,6 +663,7 @@ export default function AdminPage() {
     )
   }
 
+  // Show login if not admin
   if (!user || user.role !== "admin") {
     return <AdminLogin />
   }
@@ -567,7 +678,7 @@ export default function AdminPage() {
               <Image src="/matchb-logo.png" alt="MatchB" width={120} height={40} className="h-8 w-auto" />
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Admin Dashboard</h1>
-                <p className="text-sm text-gray-600">Manage matrimonial profiles and matches</p>
+                <p className="text-sm text-gray-600">Manage matrimonial profiles and system</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -589,51 +700,11 @@ export default function AdminPage() {
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-2">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalUsers}</div>
-            </CardContent>
-          </Card>
+        <StatsCards stats={stats} />
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-              <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.activeUsers}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-              <CardTitle className="text-sm font-medium">Male Users</CardTitle>
-              <User className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.maleUsers}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-              <CardTitle className="text-sm font-medium">Female Users</CardTitle>
-              <User className="h-4 w-4 text-pink-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.femaleUsers}</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Tabs */}
+        {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="profiles" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               User Profiles
@@ -646,10 +717,14 @@ export default function AdminPage() {
               <Heart className="h-4 w-4" />
               Matchmaking
             </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Settings
+            </TabsTrigger>
           </TabsList>
 
           {/* Profiles Tab */}
-          <TabsContent value="profiles" className="space-y-3">
+          <TabsContent value="profiles" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -665,118 +740,118 @@ export default function AdminPage() {
                     <p className="text-gray-600">Loading profiles...</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                    <div className="md:col-span-2">
-                      <Input
-                        placeholder="Search by name or email..."
-                        value={filters.search}
-                        onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-                        className="w-full"
-                      />
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                      <div className="md:col-span-2">
+                        <Input
+                          placeholder="Search by name or email..."
+                          value={filters.search}
+                          onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+                          className="w-full"
+                        />
+                      </div>
+
+                      <Select
+                        value={filters.caste}
+                        onValueChange={(value) => setFilters((prev) => ({ ...prev, caste: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Caste" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Castes</SelectItem>
+                          {getUniqueValues("caste").map((caste) => (
+                            <SelectItem key={caste} value={caste as string}>
+                              {caste}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          placeholder="Min Age"
+                          value={filters.ageMin}
+                          onChange={(e) => setFilters((prev) => ({ ...prev, ageMin: e.target.value }))}
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Max Age"
+                          value={filters.ageMax}
+                          onChange={(e) => setFilters((prev) => ({ ...prev, ageMax: e.target.value }))}
+                        />
+                      </div>
+
+                      <Select
+                        value={filters.state}
+                        onValueChange={(value) => setFilters((prev) => ({ ...prev, state: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="State" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All States</SelectItem>
+                          {getUniqueValues("state").map((state) => (
+                            <SelectItem key={state} value={state as string}>
+                              {state}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      <Select
+                        value={filters.gender}
+                        onValueChange={(value) => setFilters((prev) => ({ ...prev, gender: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Gender" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Genders</SelectItem>
+                          <SelectItem value="Male">Male</SelectItem>
+                          <SelectItem value="Female">Female</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <Select
+                        value={filters.status}
+                        onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Status</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
 
-                    <Select
-                      value={filters.caste}
-                      onValueChange={(value) => setFilters((prev) => ({ ...prev, caste: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Caste" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Castes</SelectItem>
-                        {getUniqueValues("caste").map((caste) => (
-                          <SelectItem key={caste} value={caste as string}>
-                            {caste}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <div className="flex gap-2">
-                      <Input
-                        type="number"
-                        placeholder="Min Age"
-                        value={filters.ageMin}
-                        onChange={(e) => setFilters((prev) => ({ ...prev, ageMin: e.target.value }))}
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Max Age"
-                        value={filters.ageMax}
-                        onChange={(e) => setFilters((prev) => ({ ...prev, ageMax: e.target.value }))}
-                      />
+                    <div className="mt-4 flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          setFilters({
+                            search: "",
+                            caste: "all",
+                            ageMin: "",
+                            ageMax: "",
+                            state: "all",
+                            gender: "all",
+                            status: "all",
+                          })
+                        }
+                      >
+                        Clear Filters
+                      </Button>
+                      <div className="text-sm text-gray-600 flex items-center">
+                        Showing {filteredProfiles.length} of {profiles.length} profiles
+                      </div>
                     </div>
-
-                    <Select
-                      value={filters.state}
-                      onValueChange={(value) => setFilters((prev) => ({ ...prev, state: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="State" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All States</SelectItem>
-                        {getUniqueValues("state").map((state) => (
-                          <SelectItem key={state} value={state as string}>
-                            {state}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <Select
-                      value={filters.gender}
-                      onValueChange={(value) => setFilters((prev) => ({ ...prev, gender: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Gender" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Genders</SelectItem>
-                        <SelectItem value="Male">Male</SelectItem>
-                        <SelectItem value="Female">Female</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    <Select
-                      value={filters.status}
-                      onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Status</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {!loadingProfiles && (
-                  <div className="mt-4 flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() =>
-                        setFilters({
-                          search: "",
-                          caste: "all",
-                          ageMin: "",
-                          ageMax: "",
-                          state: "all",
-                          gender: "all",
-                          status: "all",
-                        })
-                      }
-                    >
-                      Clear Filters
-                    </Button>
-                    <div className="text-sm text-gray-600 flex items-center">
-                      Showing {filteredProfiles.length} of {profiles.length} profiles
-                    </div>
-                  </div>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -797,7 +872,7 @@ export default function AdminPage() {
                         <div className="flex items-center gap-4">
                           <Avatar className="h-12 w-12">
                             <AvatarImage src={profile.profile_photo || "/placeholder.svg"} />
-                            <AvatarFallback>{profile.name && profile.name.length > 0 ? profile.name.charAt(0) : '?'}</AvatarFallback>
+                            <AvatarFallback>{profile.name?.charAt(0) || '?'}</AvatarFallback>
                           </Avatar>
 
                           <div className="space-y-1">
@@ -1187,6 +1262,17 @@ export default function AdminPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Settings Tab */}
+          <TabsContent value="settings" className="space-y-6">
+            <AdminSettings 
+              userId={user.id} 
+              onUserAdded={() => {
+                fetchProfiles()
+                fetchStats()
+              }}
+            />
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -1296,8 +1382,7 @@ export default function AdminPage() {
                 onClick={handlePaymentVerification}
               >
                 {paymentDialog.action === "verify" ? "Verify Payment" : "Reject Payment"}
-             </Button>
-             
+              </Button>
             </div>
           </div>
         </DialogContent>
