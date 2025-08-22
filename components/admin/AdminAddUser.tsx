@@ -1,7 +1,6 @@
-// components/admin/AdminAddUser.tsx
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,11 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { UserPlus, Loader2, Copy, Check } from "lucide-react"
+import { UserPlus, Loader2, Copy, Check, Upload, X, Image } from "lucide-react"
 
 interface AdminAddUserProps {
   onUserAdded?: () => void
 }
+
 
 interface FormData {
   name: string
@@ -66,6 +66,7 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
   })
 
   const [isLoading, setIsLoading] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [successDialog, setSuccessDialog] = useState<{
     open: boolean
@@ -75,10 +76,80 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
     open: false
   })
   const [copied, setCopied] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string>("")
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
     if (message) setMessage(null)
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
+    if (!allowedTypes.includes(file.type)) {
+      setMessage({ type: 'error', text: 'Invalid file type. Only JPEG, PNG, and WebP are allowed.' })
+      return
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'File size too large. Maximum 5MB allowed.' })
+      return
+    }
+
+    setSelectedFile(file)
+    
+    // Create preview URL
+    const reader = new FileReader()
+    reader.onload = () => {
+      setPreviewUrl(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+    
+    if (message) setMessage(null)
+  }
+
+  const removeSelectedFile = () => {
+    setSelectedFile(null)
+    setPreviewUrl("")
+    setFormData(prev => ({ ...prev, profile_photo: "" }))
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }
+
+  const uploadFile = async (): Promise<string | null> => {
+    if (!selectedFile) return null
+
+    setIsUploading(true)
+    try {
+      const uploadFormData = new FormData()
+      uploadFormData.append("file", selectedFile)
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: uploadFormData,
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        return data.url
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to upload image' })
+        return null
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to upload image. Please try again.' })
+      return null
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   const validateForm = (): boolean => {
@@ -119,6 +190,17 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
     setIsLoading(true)
 
     try {
+      // Upload file first if selected
+      let photoUrl = ""
+      if (selectedFile) {
+        const uploadedUrl = await uploadFile()
+        if (!uploadedUrl) {
+          setIsLoading(false)
+          return
+        }
+        photoUrl = uploadedUrl
+      }
+
       const token = localStorage.getItem("token")
       const response = await fetch("/api/admin/create-profile", {
         method: "POST",
@@ -128,7 +210,8 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
         },
         body: JSON.stringify({
           ...formData,
-          age: parseInt(formData.age)
+          age: parseInt(formData.age),
+          profile_photo: photoUrl
         }),
       })
 
@@ -165,6 +248,9 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
           partner_preferences: "",
           profile_photo: ""
         })
+
+        // Reset file upload
+        removeSelectedFile()
 
         if (onUserAdded) {
           onUserAdded()
@@ -464,25 +550,87 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
                     disabled={isLoading}
                   />
                 </div>
+                
+                {/* Profile Photo Upload */}
                 <div className="space-y-2">
-                  <Label htmlFor="profile_photo">Profile Photo URL</Label>
-                  <Input
-                    id="profile_photo"
-                    type="url"
-                    placeholder="https://example.com/photo.jpg"
-                    value={formData.profile_photo}
-                    onChange={(e) => handleInputChange("profile_photo", e.target.value)}
-                    disabled={isLoading}
-                  />
+                  <Label>Profile Photo</Label>
+                  <div className="space-y-4">
+                    {!selectedFile && !previewUrl && (
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                        <Image className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                        <div className="space-y-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isLoading || isUploading}
+                          >
+                            <Upload className="mr-2 h-4 w-4" />
+                            Choose Image
+                          </Button>
+                          <p className="text-xs text-gray-500">
+                            PNG, JPG, JPEG, WebP up to 5MB
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {(selectedFile || previewUrl) && (
+                      <div className="space-y-3">
+                        <div className="relative inline-block">
+                          <img
+                            src={previewUrl}
+                            alt="Profile preview"
+                            className="w-32 h-32 object-cover rounded-lg border"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            className="absolute -top-2 -right-2 h-8 w-8 rounded-full p-0"
+                            onClick={removeSelectedFile}
+                            disabled={isLoading || isUploading}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isLoading || isUploading}
+                          >
+                            Change Image
+                          </Button>
+                          {selectedFile && (
+                            <span className="text-sm text-gray-600">
+                              {selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      disabled={isLoading || isUploading}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full" disabled={isLoading || isUploading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating User Profile...
+                  {isUploading ? "Uploading Image..." : "Creating User Profile..."}
                 </>
               ) : (
                 "Create User Profile"
