@@ -1,4 +1,4 @@
-// components/admin/AdminPasswordChange.tsx
+
 "use client"
 
 import { useState } from "react"
@@ -39,8 +39,6 @@ export default function AdminPasswordChange({ userId }: AdminPasswordChangeProps
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setMessage(null)
-
-    // Validation
     if (!formData.currentPassword || !formData.newPassword || !formData.confirmPassword) {
       setMessage({ type: 'error', text: 'All fields are required' })
       return

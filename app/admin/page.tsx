@@ -15,8 +15,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { 
-  Users, Filter, Eye, Ban, CheckCircle, XCircle, Calendar, MapPin, User, 
+import {
+  Users, Filter, Eye, Ban, CheckCircle, XCircle, Calendar, MapPin, User,
   CreditCard, Heart, FileText, DollarSign, Clock, Loader2, Mail, Phone, Settings
 } from "lucide-react"
 import Image from "next/image"
@@ -64,7 +64,7 @@ function AdminLogin() {
 
     try {
       const success = await login(finalIdentifier, password, "admin")
-      
+
       if (success) {
         router.push("/admin")
       } else {
@@ -105,8 +105,8 @@ function AdminLogin() {
               <Label htmlFor="identifier">Username, Email, or Phone</Label>
               <div className="relative flex items-center">
                 {isPhone && (
-                  <Select 
-                    value={countryCode} 
+                  <Select
+                    value={countryCode}
                     onValueChange={setCountryCode}
                     disabled={isLoading}
                   >
@@ -391,7 +391,7 @@ export default function AdminPage() {
         (profile) =>
           profile.name &&
           (profile.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-           profile.email.toLowerCase().includes(filters.search.toLowerCase()))
+            profile.email.toLowerCase().includes(filters.search.toLowerCase()))
       )
     }
 
@@ -911,8 +911,8 @@ export default function AdminPage() {
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             onClick={() => setViewDialog({ open: true, profile })}
                           >
@@ -1265,8 +1265,8 @@ export default function AdminPage() {
 
           {/* Settings Tab */}
           <TabsContent value="settings" className="space-y-6">
-            <AdminSettings 
-              userId={user.id} 
+            <AdminSettings
+              userId={user.id}
               onUserAdded={() => {
                 fetchProfiles()
                 fetchStats()
@@ -1299,7 +1299,7 @@ export default function AdminPage() {
                 </p>
               </div>
             )}
-            
+
             {approvalDialog.action === "reject" && (
               <div>
                 <Label className="text-sm font-medium">Rejection Reason</Label>
@@ -1313,7 +1313,7 @@ export default function AdminPage() {
                 />
               </div>
             )}
-            
+
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
@@ -1357,7 +1357,7 @@ export default function AdminPage() {
                 <p className="text-sm text-gray-500">Transaction ID: {paymentDialog.payment.transaction_id}</p>
               </div>
             )}
-            
+
             <div>
               <Label className="text-sm font-medium">Admin Notes</Label>
               <Textarea
@@ -1369,7 +1369,7 @@ export default function AdminPage() {
                 className="mt-1"
               />
             </div>
-            
+
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"

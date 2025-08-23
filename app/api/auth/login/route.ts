@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
       profileComplete = profiles.length > 0 && profiles[0].status !== 'rejected'
     }
 
+
     await connection.end()
 
     const token = jwt.sign(
