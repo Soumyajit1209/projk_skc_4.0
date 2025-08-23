@@ -38,8 +38,6 @@ export async function GET(request: NextRequest) {
     }
 
     let profileComplete = true // Default for admin users
-
-    // Check if profile is complete for regular users
     if (user.role === 'user') {
       const [profileRows] = await connection.execute(
         "SELECT id, status FROM user_profiles WHERE user_id = ?", 

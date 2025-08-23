@@ -22,11 +22,20 @@ export async function POST(request: NextRequest) {
 
     const connection = await mysql.createConnection(dbConfig)
 
-    // Query users table for both user and admin login
-    const [rows] = await connection.execute(
-      "SELECT * FROM users WHERE (email = ? OR phone = ?) AND status = 'active'", 
-      [identifier, identifier]
-    )
+    let query: string
+    let queryParams: string[]
+
+    // For admin login, allow name, email, or phone
+    // For user login, allow email or phone only
+    if (type === "admin") {
+      query = "SELECT * FROM users WHERE (email = ? OR phone = ? OR name = ?) AND status = 'active' AND role = 'admin'"
+      queryParams = [identifier, identifier, identifier]
+    } else {
+      query = "SELECT * FROM users WHERE (email = ? OR phone = ?) AND status = 'active'"
+      queryParams = [identifier, identifier]
+    }
+
+    const [rows] = await connection.execute(query, queryParams)
     
     const users = rows as any[]
     const user = users[0]
@@ -59,7 +68,6 @@ export async function POST(request: NextRequest) {
       const profiles = profileRows as any[]
       profileComplete = profiles.length > 0 && profiles[0].status !== 'rejected'
     }
-
 
     await connection.end()
 
