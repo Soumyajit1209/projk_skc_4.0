@@ -10,7 +10,6 @@ const dbConfig = {
   port: Number.parseInt(process.env.DB_PORT || "3306"),
 }
 
-// Get user's active plan
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization")
@@ -21,51 +20,85 @@ export async function GET(request: NextRequest) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
-
     const connection = await mysql.createConnection(dbConfig)
 
-    // Get user's most recent verified payment and plan
-    const [rows] = await connection.execute(`
+    // Get active normal subscription
+    const [normalSubRows] = await connection.execute(`
       SELECT 
-        p.id as payment_id,
-        p.status,
-        p.verified_at,
-        p.created_at as payment_date,
-        pl.name as plan_name,
-        pl.price,
-        pl.duration_months,
-        pl.features,
-        pl.description,
-        DATE_ADD(p.verified_at, INTERVAL pl.duration_months MONTH) as expires_at
-      FROM payments p
-      JOIN plans pl ON p.plan_id = pl.id
-      WHERE p.user_id = ? AND p.status = 'verified'
-      ORDER BY p.verified_at DESC
+        us.*,
+        p.name as plan_name,
+        p.price,
+        p.duration_months
+      FROM user_subscriptions us
+      JOIN plans p ON us.plan_id = p.id
+      WHERE us.user_id = ? 
+        AND us.status = 'active'
+        AND p.type = 'normal'
+        AND us.expires_at > NOW()
+      ORDER BY us.expires_at DESC
       LIMIT 1
     `, [decoded.userId])
 
-    await connection.end()
+    // Get active call subscription
+    const [callSubRows] = await connection.execute(`
+      SELECT 
+        uc.*,
+        p.name as plan_name,
+        p.price,
+        p.call_credits
+      FROM user_call_credits uc
+      JOIN plans p ON uc.plan_id = p.id
+      WHERE uc.user_id = ? 
+        AND uc.credits_remaining > 0
+        AND uc.expires_at > NOW()
+      ORDER BY uc.expires_at DESC
+      LIMIT 1
+    `, [decoded.userId])
 
-    const activePlan = (rows as any[])[0]
+    const normalSub = (normalSubRows as any[])[0]
+    const callSub = (callSubRows as any[])[0]
 
-    if (!activePlan) {
-      return NextResponse.json({ activePlan: null })
+    const plans: any = {}
+
+    // Process normal plan
+    if (normalSub) {
+      const expiresAt = new Date(normalSub.expires_at)
+      const now = new Date()
+      const daysLeft = Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+      plans.normal_plan = {
+        plan_name: normalSub.plan_name,
+        price: normalSub.price,
+        duration_months: normalSub.duration_months,
+        expires_at: normalSub.expires_at,
+        daysLeft: Math.max(0, daysLeft),
+        isActive: daysLeft > 0
+      }
     }
 
-    // Check if plan is still active (not expired)
-    const now = new Date()
-    const expiresAt = new Date(activePlan.expires_at)
-    const isActive = now <= expiresAt
+    // Process call plan
+    if (callSub) {
+      const expiresAt = new Date(callSub.expires_at)
+      const now = new Date()
+      const daysLeft = Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 
-    return NextResponse.json({ 
-      activePlan: isActive ? {
-        ...activePlan,
-        isActive: true,
-        daysLeft: Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-      } : null
+      plans.call_plan = {
+        plan_name: callSub.plan_name,
+        credits_remaining: callSub.credits_remaining,
+        expires_at: callSub.expires_at,
+        daysLeft: Math.max(0, daysLeft),
+        isActive: daysLeft > 0 && callSub.credits_remaining > 0
+      }
+    }
+
+    await connection.end()
+
+    return NextResponse.json({
+      plans: plans
     })
+
   } catch (error) {
-    console.error("Active plan fetch error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("Active plans error:", error)
+    return NextResponse.json({ error: "Failed to fetch active plans" }, { status: 500 })
   }
 }

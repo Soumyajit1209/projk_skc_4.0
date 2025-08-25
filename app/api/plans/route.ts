@@ -9,57 +9,36 @@ const dbConfig = {
   port: Number.parseInt(process.env.DB_PORT || "3306"),
 }
 
-// Get all active plans
 export async function GET(request: NextRequest) {
   try {
     const connection = await mysql.createConnection(dbConfig)
 
-    // Get all active plans
     const [rows] = await connection.execute(
-      "SELECT id, name, price, duration_months, features, description FROM plans WHERE is_active = 1 ORDER BY price ASC"
+      "SELECT * FROM plans WHERE is_active = 1  ORDER BY type, price ASC"
     )
+
+    const plans = (rows as any[]).map(plan => ({
+      id: plan.id,
+      name: plan.name,
+      price: plan.price,
+      duration_months: plan.duration_months,
+      features: plan.features ? plan.features.split(',').map((f: string) => f.trim()) : [],
+      description: plan.description,
+      type: plan.type,
+      call_credits: plan.call_credits,
+      can_view_details: plan.can_view_details === 1,
+      can_make_calls: plan.can_make_calls === 1,
+      created_at: plan.created_at
+    }))
 
     await connection.end()
 
-    return NextResponse.json({ plans: rows })
+    return NextResponse.json({
+      plans: plans
+    })
+
   } catch (error) {
     console.error("Plans fetch error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
-
-// Create a new plan (Admin only)
-export async function POST(request: NextRequest) {
-  try {
-    const authHeader = request.headers.get("authorization")
-    const token = authHeader?.replace("Bearer ", "")
-
-    if (!token) {
-      return NextResponse.json({ error: "No token provided" }, { status: 401 })
-    }
-
-    // Verify admin role would go here
-    // For now, allowing creation without verification
-
-    const { name, price, duration_months, features, description } = await request.json()
-
-    if (!name || !price || !duration_months) {
-      return NextResponse.json({ error: "Name, price, and duration are required" }, { status: 400 })
-    }
-
-    const connection = await mysql.createConnection(dbConfig)
-
-    await connection.execute(
-      `INSERT INTO plans (name, price, duration_months, features, description, is_active, created_at) 
-       VALUES (?, ?, ?, ?, ?, 1, NOW())`,
-      [name, price, duration_months, features || null, description || null]
-    )
-
-    await connection.end()
-
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error("Plan creation error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ error: "Failed to fetch plans" }, { status: 500 })
   }
 }
