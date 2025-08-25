@@ -1,7 +1,8 @@
-// app/api/admin/profiles/route.ts
 import { type NextRequest, NextResponse } from "next/server"
 import mysql from "mysql2/promise"
 import jwt from "jsonwebtoken"
+
+
 
 const dbConfig = {
   host: process.env.DB_HOST,
@@ -21,99 +22,88 @@ export async function GET(request: NextRequest) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
-
-    const { searchParams } = new URL(request.url)
-    const gender = searchParams.get("gender")
-    const ageMin = searchParams.get("ageMin")
-    const ageMax = searchParams.get("ageMax")
-    const caste = searchParams.get("caste")
-    const city = searchParams.get("city")
-    const state = searchParams.get("state")
-    const status = searchParams.get("status")
+    
+    if (decoded.role !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
+    }
 
     const connection = await mysql.createConnection(dbConfig)
 
-    // Verify admin role
-    const [adminRows] = await connection.execute("SELECT role FROM users WHERE id = ?", [decoded.userId])
-    const admin = (adminRows as any[])[0]
-    if (!admin || admin.role !== "admin") {
-      await connection.end()
-      return NextResponse.json({ error: "Access denied" }, { status: 403 })
-    }
+    // Enhanced query with subscription information
+    const [rows] = await connection.execute(`
+   SELECT 
+     up.*,
+     u.name, u.email, u.phone,
+     
+     -- Check for active normal plan
+     CASE WHEN ns.id IS NOT NULL THEN 1 ELSE 0 END as has_normal_plan,
+     
+     -- Check for active call plan
+     CASE WHEN cc.id IS NOT NULL THEN 1 ELSE 0 END as has_call_plan,
+     cc.credits_remaining as call_credits_remaining,
+     
+     -- Count total matches
+     (SELECT COUNT(*) FROM matches WHERE user_id = up.user_id OR matched_user_id = up.user_id) as total_matches
+     
+   FROM user_profiles up
+   JOIN users u ON up.user_id = u.id
+   
+   -- Left join for active normal subscriptions
+   LEFT JOIN user_subscriptions ns ON up.user_id = ns.user_id 
+     AND ns.status = 'active' 
+     AND ns.expires_at > NOW()
+   LEFT JOIN plans np ON ns.plan_id = np.id AND np.type = 'normal'
+   
+   -- Left join for active call credits
+   LEFT JOIN user_call_credits cc ON up.user_id = cc.user_id 
+     AND cc.credits_remaining > 0 
+     AND cc.expires_at > NOW()
+   LEFT JOIN plans cp ON cc.plan_id = cp.id AND cp.type = 'call'
+   
+   WHERE u.role = 'user'
+   ORDER BY up.created_at DESC
+ `)
 
-    // Updated query to properly join users and user_profiles tables
-    let query = `
-      SELECT 
-        p.id,
-        p.user_id,
-        u.name,
-        u.email,
-        u.phone,
-        p.age,
-        p.gender,
-        p.height,
-        p.weight,
-        p.caste,
-        p.religion,
-        p.mother_tongue,
-        p.marital_status,
-        p.education,
-        p.occupation,
-        p.income,
-        p.state,
-        p.city,
-        p.family_type,
-        p.family_status,
-        p.about_me,
-        p.partner_preferences,
-        p.profile_photo,
-        p.status,
-        p.rejection_reason,
-        p.created_at,
-        p.updated_at
-      FROM user_profiles p 
-      JOIN users u ON p.user_id = u.id 
-      WHERE u.role = 'user'
-    `
-    const params: any[] = []
-
-    if (gender && gender !== 'all') {
-      query += " AND p.gender = ?"
-      params.push(gender)
-    }
-    if (ageMin) {
-      query += " AND p.age >= ?"
-      params.push(Number.parseInt(ageMin))
-    }
-    if (ageMax) {
-      query += " AND p.age <= ?"
-      params.push(Number.parseInt(ageMax))
-    }
-    if (caste && caste !== 'all') {
-      query += " AND p.caste = ?"
-      params.push(caste)
-    }
-    if (city && city !== 'all') {
-      query += " AND p.city = ?"
-      params.push(city)
-    }
-    if (state && state !== 'all') {
-      query += " AND p.state = ?"
-      params.push(state)
-    }
-    if (status && status !== 'all') {
-      query += " AND p.status = ?"
-      params.push(status)
-    }
-
-    query += " ORDER BY p.created_at DESC"
-
-    const [rows] = await connection.execute(query, params)
     await connection.end()
 
-    return NextResponse.json(rows)
+    const profiles = (rows as any[]).map(row => ({
+      id: row.id,
+      user_id: row.user_id,
+      name: row.name,
+      email: row.email,
+      phone: row.phone,
+      age: row.age,
+      gender: row.gender,
+      height: row.height,
+      weight: row.weight,
+      caste: row.caste,
+      religion: row.religion,
+      mother_tongue: row.mother_tongue,
+      marital_status: row.marital_status,
+      education: row.education,
+      occupation: row.occupation,
+      income: row.income,
+      state: row.state,
+      city: row.city,
+      family_type: row.family_type,
+      family_status: row.family_status,
+      about_me: row.about_me,
+      partner_preferences: row.partner_preferences,
+      profile_photo: row.profile_photo,
+      status: row.status,
+      rejection_reason: row.rejection_reason,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      has_normal_plan: row.has_normal_plan === 1,
+      has_call_plan: row.has_call_plan === 1,
+      call_credits_remaining: row.call_credits_remaining || 0,
+      total_matches: row.total_matches || 0
+    }))
+
+    return NextResponse.json(profiles)
+
   } catch (error) {
-    console.error("Admin profiles fetch error:", error)
-    return NextResponse.json({ error: "Failed to fetch profiles" }, { status: 500 })
+    console.error("Enhanced profiles error:", error)
+    return NextResponse.json({ error: "Failed to fetch enhanced profiles" }, { status: 500 })
   }
 }

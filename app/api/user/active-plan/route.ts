@@ -1,8 +1,6 @@
-//user/active-plan/route.ts
-
-import { type NextRequest, NextResponse } from "next/server"
-import mysql from "mysql2/promise"
-import jwt from "jsonwebtoken"
+import { type NextRequest, NextResponse } from "next/server";
+import mysql from "mysql2/promise";
+import jwt from "jsonwebtoken";
 
 const dbConfig = {
   host: process.env.DB_HOST,
@@ -10,97 +8,101 @@ const dbConfig = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: Number.parseInt(process.env.DB_PORT || "3306"),
-}
+};
 
 export async function GET(request: NextRequest) {
+  const connection = await mysql.createConnection(dbConfig);
   try {
-    const authHeader = request.headers.get("authorization")
-    const token = authHeader?.replace("Bearer ", "")
+    const authHeader = request.headers.get("authorization");
+    const token = authHeader?.replace("Bearer ", "");
 
     if (!token) {
-      return NextResponse.json({ error: "No token provided" }, { status: 401 })
+      return NextResponse.json({ error: "No token provided" }, { status: 401 });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
-    const connection = await mysql.createConnection(dbConfig)
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any;
 
-    // Get active normal subscription
-    const [normalSubRows] = await connection.execute(`
-      SELECT 
-        us.*,
-        p.name as plan_name,
-        p.price,
-        p.duration_months
-      FROM user_subscriptions us
-      JOIN plans p ON us.plan_id = p.id
-      WHERE us.user_id = ? 
-        AND us.status = 'active'
-        AND p.type = 'normal'
-        AND us.expires_at > NOW()
-      ORDER BY us.expires_at DESC
-      LIMIT 1
-    `, [decoded.userId])
-
-    // Get active call subscription
-    const [callSubRows] = await connection.execute(`
-      SELECT 
-        uc.*,
-        p.name as plan_name,
-        p.price,
-        p.call_credits
-      FROM user_call_credits uc
-      JOIN plans p ON uc.plan_id = p.id
-      WHERE uc.user_id = ? 
-        AND uc.credits_remaining > 0
-        AND uc.expires_at > NOW()
-      ORDER BY uc.expires_at DESC
-      LIMIT 1
-    `, [decoded.userId])
-
-    const normalSub = (normalSubRows as any[])[0]
-    const callSub = (callSubRows as any[])[0]
-
-    const plans: any = {}
-
-    // Process normal plan
-    if (normalSub) {
-      const expiresAt = new Date(normalSub.expires_at)
-      const now = new Date()
-      const daysLeft = Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-
-      plans.normal_plan = {
-        plan_name: normalSub.plan_name,
-        price: normalSub.price,
-        duration_months: normalSub.duration_months,
-        expires_at: normalSub.expires_at,
-        daysLeft: Math.max(0, daysLeft),
-        isActive: daysLeft > 0
-      }
+    // Verify user role
+    const [userRows] = await connection.execute(
+      "SELECT role FROM users WHERE id = ?",
+      [decoded.userId]
+    );
+    const user = (userRows as any[])[0];
+    if (!user || user.role !== "user") {
+      await connection.end();
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    // Process call plan
-    if (callSub) {
-      const expiresAt = new Date(callSub.expires_at)
-      const now = new Date()
-      const daysLeft = Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    // Fetch normal plan (from user_subscriptions)
+    const [normalPlanRows] = await connection.execute(
+      `SELECT 
+         p.name AS plan_name, 
+         p.price, 
+         p.duration_months, 
+         us.expires_at, 
+         DATEDIFF(us.expires_at, NOW()) AS days_left,
+         us.status
+       FROM user_subscriptions us
+       JOIN plans p ON us.plan_id = p.id
+       WHERE us.user_id = ? 
+         AND us.status = 'active' 
+         AND us.expires_at > NOW()
+       ORDER BY us.expires_at DESC
+       LIMIT 1`,
+      [decoded.userId]
+    );
 
-      plans.call_plan = {
-        plan_name: callSub.plan_name,
-        credits_remaining: callSub.credits_remaining,
-        expires_at: callSub.expires_at,
-        daysLeft: Math.max(0, daysLeft),
-        isActive: daysLeft > 0 && callSub.credits_remaining > 0
-      }
-    }
+    // Fetch call plan (from user_call_credits)
+    const [callPlanRows] = await connection.execute(
+      `SELECT 
+         p.name AS plan_name, 
+         p.price, 
+         ucc.credits_remaining, 
+         ucc.expires_at, 
+         DATEDIFF(ucc.expires_at, NOW()) AS days_left,
+         p.call_credits
+       FROM user_call_credits ucc
+       JOIN plans p ON ucc.plan_id = p.id
+       WHERE ucc.user_id = ? 
+         AND ucc.expires_at > NOW()
+       ORDER BY ucc.expires_at DESC
+       LIMIT 1`,
+      [decoded.userId]
+    );
 
-    await connection.end()
+    const normalPlan = (normalPlanRows as any[])[0];
+    const callPlan = (callPlanRows as any[])[0];
 
-    return NextResponse.json({
-      plans: plans
-    })
+    const response = {
+      plans: {
+        normal_plan: normalPlan
+          ? {
+              plan_name: normalPlan.plan_name,
+              price: normalPlan.price,
+              duration_months: normalPlan.duration_months,
+              expires_at: normalPlan.expires_at,
+              daysLeft: normalPlan.days_left,
+              isActive: normalPlan.status === "active",
+            }
+          : null,
+        call_plan: callPlan
+          ? {
+              plan_name: callPlan.plan_name,
+              price: callPlan.price,
+              credits_remaining: callPlan.credits_remaining,
+              expires_at: callPlan.expires_at,
+              daysLeft: callPlan.days_left,
+              isActive: callPlan.credits_remaining > 0,
+            }
+          : null,
+      },
+    };
 
+    return NextResponse.json(response);
   } catch (error) {
-    console.error("Active plans error:", error)
-    return NextResponse.json({ error: "Failed to fetch active plans" }, { status: 500 })
+    console.error("Error fetching active plans:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } finally {
+    await connection.end();
   }
 }

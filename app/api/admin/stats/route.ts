@@ -1,4 +1,3 @@
-// app/api/admin/stats/route.ts
 import { type NextRequest, NextResponse } from "next/server"
 import mysql from "mysql2/promise"
 import jwt from "jsonwebtoken"
@@ -21,97 +20,65 @@ export async function GET(request: NextRequest) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
+    
+    if (decoded.role !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
+    }
 
     const connection = await mysql.createConnection(dbConfig)
 
-    // Verify admin role
-    const [adminRows] = await connection.execute("SELECT role FROM users WHERE id = ?", [decoded.userId])
-    const admin = (adminRows as any[])[0]
-    if (!admin || admin.role !== "admin") {
-      await connection.end()
-      return NextResponse.json({ error: "Access denied" }, { status: 403 })
+    // Enhanced statistics queries
+    const statsQueries = [
+      // Basic user stats
+      "SELECT COUNT(*) as totalUsers FROM users WHERE role = 'user'",
+      "SELECT COUNT(*) as activeUsers FROM users WHERE role = 'user' AND status = 'active'",
+      "SELECT COUNT(*) as maleUsers FROM user_profiles WHERE gender = 'Male' AND status = 'approved'",
+      "SELECT COUNT(*) as femaleUsers FROM user_profiles WHERE gender = 'Female' AND status = 'approved'",
+      
+      // Profile stats
+      "SELECT COUNT(*) as pendingProfiles FROM user_profiles WHERE status = 'pending'",
+      "SELECT COUNT(*) as approvedProfiles FROM user_profiles WHERE status = 'approved'",
+      
+      // Match stats
+      "SELECT COUNT(*) as totalMatches FROM user_matches",
+      
+      // Call stats
+      "SELECT COUNT(*) as activeCallSessions FROM call_sessions WHERE status IN ('initiated', 'ringing', 'in_progress')",
+      "SELECT COALESCE(SUM(duration), 0) as callMinutesUsed FROM call_sessions WHERE status = 'completed' AND MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW())",
+      
+      // Revenue stats
+      "SELECT COALESCE(SUM(amount), 0) as totalRevenue FROM payments WHERE status = 'verified' AND MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW())",
+      
+      // Subscription stats
+      "SELECT COUNT(*) as normalSubscriptions FROM user_subscriptions us JOIN plans p ON us.plan_id = p.id WHERE us.status = 'active' AND p.type = 'normal' AND us.expires_at > NOW()",
+      "SELECT COUNT(*) as callSubscriptions FROM user_call_credits uc JOIN plans p ON uc.plan_id = p.id WHERE uc.credits_remaining > 0 AND p.type = 'call' AND uc.expires_at > NOW()"
+    ]
+
+    const results = await Promise.all(
+      statsQueries.map(query => connection.execute(query))
+    )
+
+    const stats = {
+      totalUsers: (results[0][0] as any[])[0]?.totalUsers || 0,
+      activeUsers: (results[1][0] as any[])[0]?.activeUsers || 0,
+      maleUsers: (results[2][0] as any[])[0]?.maleUsers || 0,
+      femaleUsers: (results[3][0] as any[])[0]?.femaleUsers || 0,
+      pendingProfiles: (results[4][0] as any[])[0]?.pendingProfiles || 0,
+      approvedProfiles: (results[5][0] as any[])[0]?.approvedProfiles || 0,
+      totalMatches: (results[6][0] as any[])[0]?.totalMatches || 0,
+      activeCallSessions: (results[7][0] as any[])[0]?.activeCallSessions || 0,
+      callMinutesUsed: (results[8][0] as any[])[0]?.callMinutesUsed || 0,
+      totalRevenue: (results[9][0] as any[])[0]?.totalRevenue || 0,
+      normalSubscriptions: (results[10][0] as any[])[0]?.normalSubscriptions || 0,
+      callSubscriptions: (results[11][0] as any[])[0]?.callSubscriptions || 0,
     }
-
-    // Get total users (excluding admins)
-    const [userRows] = await connection.execute("SELECT COUNT(*) as count FROM users WHERE role = 'user'")
-    const totalUsers = (userRows as any)[0].count
-
-    // Get active users
-    const [activeRows] = await connection.execute(
-      "SELECT COUNT(*) as count FROM users WHERE role = 'user' AND status = 'active'"
-    )
-    const activeUsers = (activeRows as any)[0].count
-
-    // Get male users (from profiles)
-    const [maleRows] = await connection.execute(`
-      SELECT COUNT(*) as count 
-      FROM user_profiles up 
-      JOIN users u ON up.user_id = u.id 
-      WHERE u.role = 'user' AND up.gender = 'Male'
-    `)
-    const maleUsers = (maleRows as any)[0].count
-
-    // Get female users (from profiles)
-    const [femaleRows] = await connection.execute(`
-      SELECT COUNT(*) as count 
-      FROM user_profiles up 
-      JOIN users u ON up.user_id = u.id 
-      WHERE u.role = 'user' AND up.gender = 'Female'
-    `)
-    const femaleUsers = (femaleRows as any)[0].count
-
-    // Get pending profiles
-    const [pendingRows] = await connection.execute("SELECT COUNT(*) as count FROM user_profiles WHERE status = 'pending'")
-    const pendingProfiles = (pendingRows as any)[0].count
-
-    // Get approved profiles
-    const [approvedRows] = await connection.execute("SELECT COUNT(*) as count FROM user_profiles WHERE status = 'approved'")
-    const approvedProfiles = (approvedRows as any)[0].count
-
-    // Get rejected profiles
-    const [rejectedRows] = await connection.execute("SELECT COUNT(*) as count FROM user_profiles WHERE status = 'rejected'")
-    const rejectedProfiles = (rejectedRows as any)[0].count
-
-    // Get total matches
-    const [matchRows] = await connection.execute("SELECT COUNT(*) as count FROM matches")
-    const totalMatches = (matchRows as any)[0].count
-
-    // Get total payments
-    const [paymentRows] = await connection.execute("SELECT COUNT(*) as count FROM payments")
-    const totalPayments = (paymentRows as any)[0].count
-
-    // Get pending payments
-    const [pendingPaymentRows] = await connection.execute("SELECT COUNT(*) as count FROM payments WHERE status = 'pending'")
-    const pendingPayments = (pendingPaymentRows as any)[0].count
-
-    // Get verified payments
-    const [verifiedPaymentRows] = await connection.execute("SELECT COUNT(*) as count FROM payments WHERE status = 'verified'")
-    const verifiedPayments = (verifiedPaymentRows as any)[0].count
-
-    // Get recent registrations (last 30 days)
-    const [recentRows] = await connection.execute(
-      "SELECT COUNT(*) as count FROM users WHERE role = 'user' AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)"
-    )
-    const recentRegistrations = (recentRows as any)[0].count
 
     await connection.end()
 
-    return NextResponse.json({
-      totalUsers,
-      activeUsers,
-      maleUsers,
-      femaleUsers,
-      pendingProfiles,
-      approvedProfiles,
-      rejectedProfiles,
-      totalMatches,
-      totalPayments,
-      pendingPayments,
-      verifiedPayments,
-      recentRegistrations,
-    })
+    return NextResponse.json(stats)
+
   } catch (error) {
-    console.error("Admin stats fetch error:", error)
-    return NextResponse.json({ error: "Failed to fetch stats" }, { status: 500 })
+    console.error("Enhanced stats error:", error)
+    return NextResponse.json({ error: "Failed to fetch enhanced stats" }, { status: 500 })
   }
 }

@@ -16,7 +16,6 @@ const EXOTEL_TOKEN = process.env.EXOTEL_TOKEN
 const EXOTEL_APP_ID = process.env.EXOTEL_APP_ID
 const EXOTEL_CALLER_ID = process.env.EXOTEL_CALLER_ID // Your verified Exotel number
 
-// Function to create masked number using Exotel
 async function createMaskedCall(callerNumber: string, receiverNumber: string, userId: number, targetUserId: number) {
   try {
     const url = `https://api.exotel.com/v1/Accounts/${EXOTEL_SID}/Calls/connect`

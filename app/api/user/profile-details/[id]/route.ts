@@ -13,7 +13,7 @@ const dbConfig = {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get("authorization")
@@ -23,12 +23,16 @@ export async function GET(
       return NextResponse.json({ error: "No token provided" }, { status: 401 })
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
-    const profileId = params.id
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || "fallback-secret"
+    ) as any
+
+    const { id: profileId } = await context.params
 
     if (!profileId) {
       return NextResponse.json({ error: "Profile ID is required" }, { status: 400 })
-    }
+    }   
 
     const connection = await mysql.createConnection(dbConfig)
 
