@@ -243,39 +243,45 @@ export default function EnhancedDashboardPage() {
     }
   }
 
-  const fetchCallLogs = async () => {
-    setLoadingCallLogs(true)
-    try {
-      const token = localStorage.getItem("token")
-      const response = await fetch("/api/user/call-logs", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+ const fetchCallLogs = async () => {
+  setLoadingCallLogs(true)
+  try {
+    const token = localStorage.getItem("token")
+    const response = await fetch("/api/user/call-logs", {  // Correct endpoint
+      headers: { Authorization: `Bearer ${token}` },
+    })
 
-      if (response.ok) {
-        const data = await response.json()
-        setCallLogs(data.logs || [])
-      }
-    } catch (error) {
-      console.error("Error fetching call logs:", error)
-    } finally {
-      setLoadingCallLogs(false)
+    if (response.ok) {
+      const data = await response.json()
+      setCallLogs(data.logs || [])
+    } else {
+      console.error("Failed to fetch call logs")
+      setCallLogs([])
     }
+  } catch (error) {
+    console.error("Error fetching call logs:", error)
+    setCallLogs([])
+  } finally {
+    setLoadingCallLogs(false)
   }
+}
 
-  const fetchPlans = async () => {
-    setLoadingPlans(true)
-    try {
-      const response = await fetch("/api/plans")
-      if (response.ok) {
-        const data = await response.json()
-        setPlans(data.plans)
-      }
-    } catch (error) {
-      console.error("Error fetching plans:", error)
-    } finally {
-      setLoadingPlans(false)
+const fetchPlansFromAPI = async () => {
+  setLoadingPlans(true)
+  try {
+    const response = await fetch("/api/plans")
+    if (response.ok) {
+      const data = await response.json()
+      setPlans(data.plans)
+    } else {
+      console.error("Failed to fetch plans")
     }
+  } catch (error) {
+    console.error("Error fetching plans:", error)
+  } finally {
+    setLoadingPlans(false)
   }
+}
 
   const initiateCall = async (targetUserId: number, targetName: string) => {
     // Check if user has call plan
@@ -318,27 +324,35 @@ export default function EnhancedDashboardPage() {
   }
 
   const viewProfileDetails = async (profileId: number) => {
-    // Check if user has access to view details
-    if (!activePlans.normal_plan?.isActive) {
-      setShowUpgradeModal(true)
-      return
-    }
-
-    try {
-      const token = localStorage.getItem("token")
-      const response = await fetch(`/api/user/profile-details/${profileId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setSelectedMatch(data.profile)
-        setShowProfileDetails(true)
-      }
-    } catch (error) {
-      console.error("Error fetching profile details:", error)
-    }
+  // Check if user has access to view details
+  if (!activePlans.normal_plan?.isActive) {
+    setShowUpgradeModal(true)
+    return
   }
+
+  try {
+    const token = localStorage.getItem("token")
+    const response = await fetch(`/api/user/profile-details/${profileId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      setSelectedMatch(data.profile)
+      setShowProfileDetails(true)
+    } else {
+      const errorData = await response.json()
+      if (errorData.error.includes("Premium subscription required")) {
+        setShowUpgradeModal(true)
+      } else {
+        alert(errorData.error || "Failed to fetch profile details")
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching profile details:", error)
+    alert("An error occurred while fetching profile details")
+  }
+}
 
   const handleSearchFilterChange = (key: keyof SearchFilters, value: string) => {
     setSearchFilters(prev => ({ ...prev, [key]: value }))
@@ -373,144 +387,147 @@ export default function EnhancedDashboardPage() {
     })
   }
 
-  const renderProfileCard = (profile: UserProfile, isSearchResult = false) => {
-    const hasNormalPlan = activePlans.normal_plan?.isActive
-    const hasCallPlan = activePlans.call_plan?.isActive
-    const isBlurred = isSearchResult && !hasNormalPlan
+ const renderProfileCard = (profile: UserProfile, isSearchResult = false) => {
+  const hasNormalPlan = activePlans.normal_plan?.isActive
+  const hasCallPlan = activePlans.call_plan?.isActive
+  const isBlurred = isSearchResult && !hasNormalPlan
 
-    return (
-      <div key={profile.id} className={`bg-white border rounded-lg hover:shadow-md transition-all hover:border-blue-300 ${isBlurred ? 'relative' : ''}`}>
-        {isBlurred && (
-          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-lg z-10 flex items-center justify-center">
-            <div className="text-center p-4">
-              <Shield className="h-8 w-8 text-blue-500 mx-auto mb-2" />
-              <p className="text-sm font-medium text-gray-900 mb-1">Premium Feature</p>
-              <p className="text-xs text-gray-600 mb-3">Upgrade to view full details</p>
-              <Button size="sm" onClick={() => setShowUpgradeModal(true)} className="bg-blue-600 hover:bg-blue-700">
-                <Zap className="h-3 w-3 mr-1" />
-                Upgrade
-              </Button>
-            </div>
+  return (
+    <div key={profile.id} className={`bg-white border rounded-lg hover:shadow-md transition-all hover:border-blue-300 ${isBlurred ? 'relative' : ''}`}>
+      {isBlurred && (
+        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-lg z-10 flex items-center justify-center">
+          <div className="text-center p-4">
+            <Shield className="h-8 w-8 text-blue-500 mx-auto mb-2" />
+            <p className="text-sm font-medium text-gray-900 mb-1">Premium Feature</p>
+            <p className="text-xs text-gray-600 mb-3">Upgrade to view full details</p>
+            <Button size="sm" onClick={() => {
+              fetchPlansFromAPI()
+              setShowUpgradeModal(true)
+            }} className="bg-blue-600 hover:bg-blue-700">
+              <Zap className="h-3 w-3 mr-1" />
+              Upgrade
+            </Button>
           </div>
-        )}
-        
-        <div className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3 flex-1 min-w-0">
-              <Avatar className="h-14 w-14 border-2 border-blue-100">
-                <AvatarImage src={!isBlurred ? profile.profile_photo : "/placeholder.svg"} />
-                <AvatarFallback className="text-base font-semibold text-blue-500 bg-blue-50">
-                  {!isBlurred ? profile.name.charAt(0) : '?'}
-                </AvatarFallback>
-              </Avatar>
+        </div>
+      )}
+      
+      <div className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3 flex-1 min-w-0">
+            <Avatar className="h-14 w-14 border-2 border-blue-100">
+              <AvatarImage src={!isBlurred ? profile.profile_photo : "/placeholder.svg"} />
+              <AvatarFallback className="text-base font-semibold text-blue-500 bg-blue-50">
+                {!isBlurred ? profile.name.charAt(0) : '?'}
+              </AvatarFallback>
+            </Avatar>
+            
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center space-x-2">
+                <h3 className="text-lg font-semibold text-gray-900 truncate">
+                  {!isBlurred ? profile.name : `${profile.gender} • ${profile.age} years`}
+                </h3>
+                {profile.created_by_admin && (
+                  <Badge variant="outline" className="text-xs border-amber-200 text-amber-700 bg-amber-50 px-1.5">
+                    <Crown className="h-3 w-3 mr-1" />
+                    Expert
+                  </Badge>
+                )}
+                {profile.compatibility_score && (
+                  <Badge variant="outline" className="text-xs border-green-200 text-green-700 bg-green-50 px-1.5">
+                    <Star className="h-3 w-3 mr-1" />
+                    {profile.compatibility_score}% Match
+                  </Badge>
+                )}
+              </div>
               
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-2">
-                  <h3 className="text-lg font-semibold text-gray-900 truncate">
-                    {!isBlurred ? profile.name : `${profile.gender} • ${profile.age} years`}
-                  </h3>
-                  {profile.created_by_admin && (
-                    <Badge variant="outline" className="text-xs border-amber-200 text-amber-700 bg-amber-50 px-1.5">
-                      <Crown className="h-3 w-3 mr-1" />
-                      Expert
-                    </Badge>
-                  )}
-                  {profile.compatibility_score && (
-                    <Badge variant="outline" className="text-xs border-green-200 text-green-700 bg-green-50 px-1.5">
-                      <Star className="h-3 w-3 mr-1" />
-                      {profile.compatibility_score}% Match
-                    </Badge>
-                  )}
-                </div>
-                
-                <div className="flex items-center text-sm text-gray-600 space-x-3 mt-1">
-                  <span className="flex items-center">
-                    <Calendar className="h-3 w-3 mr-1" />
-                    {profile.age} yrs
-                  </span>
+              <div className="flex items-center text-sm text-gray-600 space-x-3 mt-1">
+                <span className="flex items-center">
+                  <Calendar className="h-3 w-3 mr-1" />
+                  {profile.age} yrs
+                </span>
+                <span className="flex items-center">
+                  <MapPin className="h-3 w-3 mr-1" />
+                  {profile.city}
+                </span>
+                {profile.distance && (
                   <span className="flex items-center">
                     <MapPin className="h-3 w-3 mr-1" />
-                    {profile.city}
+                    {profile.distance}km away
                   </span>
-                  {profile.distance && (
-                    <span className="flex items-center">
-                      <MapPin className="h-3 w-3 mr-1" />
-                      {profile.distance}km away
-                    </span>
-                  )}
-                </div>
-                
-                <div className="flex items-center text-xs text-gray-500 space-x-3 mt-1">
-                  <span>{profile.education}</span>
-                  <span>•</span>
-                  <span>{profile.religion}</span>
-                  {profile.height && !isBlurred && (
-                    <>
-                      <span>•</span>
-                      <span>{profile.height}</span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col space-y-2 ml-4">
-              <div className="flex space-x-2">
-                <Button 
-                  onClick={() => viewProfileDetails(profile.id)}
-                  size="sm"
-                  variant="outline"
-                  className="px-3 py-1 text-xs"
-                  disabled={isBlurred}
-                >
-                  {isBlurred ? (
-                    <>
-                      <EyeOff className="h-3 w-3 mr-1" />
-                      Locked
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="h-3 w-3 mr-1" />
-                      View
-                    </>
-                  )}
-                </Button>
-                
-                <Button 
-                  onClick={() => initiateCall(profile.id, profile.name)}
-                  size="sm"
-                  className={`px-3 py-1 text-xs ${
-                    hasCallPlan 
-                      ? 'bg-green-600 hover:bg-green-700 text-white' 
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
-                  disabled={!hasCallPlan || makingCall}
-                >
-                  {makingCall ? (
-                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-                  ) : (
-                    <>
-                      <PhoneCall className="h-3 w-3 mr-1" />
-                      {hasCallPlan ? 'Call' : 'Locked'}
-                    </>
-                  )}
-                </Button>
+                )}
               </div>
               
+              <div className="flex items-center text-xs text-gray-500 space-x-3 mt-1">
+                <span>{profile.education}</span>
+                <span>•</span>
+                <span>{profile.religion}</span>
+                {profile.height && !isBlurred && (
+                  <>
+                    <span>•</span>
+                    <span>{profile.height}</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col space-y-2 ml-4">
+            <div className="flex space-x-2">
               <Button 
+                onClick={() => viewProfileDetails(profile.id)}
                 size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-xs"
+                variant="outline"
+                className="px-3 py-1 text-xs"
                 disabled={isBlurred}
               >
-                <MessageCircle className="h-3 w-3 mr-1" />
-                Chat
+                {isBlurred ? (
+                  <>
+                    <EyeOff className="h-3 w-3 mr-1" />
+                    Locked
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-3 w-3 mr-1" />
+                    View
+                  </>
+                )}
+              </Button>
+              
+              <Button 
+                onClick={() => initiateCall(profile.id, profile.name)}
+                size="sm"
+                className={`px-3 py-1 text-xs ${
+                  hasCallPlan 
+                    ? 'bg-green-600 hover:bg-green-700 text-white' 
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+                disabled={!hasCallPlan || makingCall}
+              >
+                {makingCall ? (
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                ) : (
+                  <>
+                    <PhoneCall className="h-3 w-3 mr-1" />
+                    {hasCallPlan ? 'Call' : 'Locked'}
+                  </>
+                )}
               </Button>
             </div>
+            
+            <Button 
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-xs"
+              disabled={isBlurred}
+            >
+              <MessageCircle className="h-3 w-3 mr-1" />
+              Chat
+            </Button>
           </div>
         </div>
       </div>
-    )
-  }
+    </div>
+  )
+}
 
   if (loading || loadingProfile) {
     return (
@@ -712,7 +729,7 @@ export default function EnhancedDashboardPage() {
                     variant="ghost" 
                     className="w-full justify-start hover:bg-purple-50"
                     onClick={() => {
-                      fetchPlans()
+                      fetchPlansFromAPI()
                       setShowPlansModal(true)
                     }}
                   >
@@ -774,7 +791,7 @@ export default function EnhancedDashboardPage() {
                               size="sm" 
                               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                               onClick={() => {
-                                fetchPlans()
+                                fetchPlansFromAPI()
                                 setShowPlansModal(true)
                               }}
                             >
@@ -1226,7 +1243,7 @@ export default function EnhancedDashboardPage() {
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 onClick={() => {
                   setShowUpgradeModal(false)
-                  fetchPlans()
+                  fetchPlansFromAPI()
                   setShowPlansModal(true)
                 }}
               >

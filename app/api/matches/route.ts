@@ -21,92 +21,68 @@ export async function GET(request: NextRequest) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get("userId")
-
-    if (!userId) {
-      return NextResponse.json({ error: "User ID is required" }, { status: 400 })
-    }
 
     const connection = await mysql.createConnection(dbConfig)
 
-    // Verify admin role
-    const [adminRows] = await connection.execute("SELECT role FROM users WHERE id = ?", [decoded.userId])
-    const admin = (adminRows as any[])[0]
-    if (!admin || admin.role !== "admin") {
+    // Verify user role (only regular users can access this)
+    const [userRows] = await connection.execute("SELECT role FROM users WHERE id = ?", [decoded.userId])
+    const user = (userRows as any[])[0]
+    if (!user || user.role !== "user") {
       await connection.end()
       return NextResponse.json({ error: "Access denied" }, { status: 403 })
     }
 
-    // Get user's profile to determine opposite gender
-    const [userProfileRows] = await connection.execute(
-      "SELECT gender, age, caste, religion, state FROM user_profiles WHERE user_id = ?",
-      [userId]
-    )
-
-    const userProfile = (userProfileRows as any[])[0]
-    if (!userProfile) {
-      await connection.end()
-      return NextResponse.json({ error: "User profile not found" }, { status: 404 })
-    }
-
-    const oppositeGender = userProfile.gender === "Male" ? "Female" : "Male"
-
-    // Get potential matches (opposite gender, approved profiles, not already matched)
-    const [potentialMatches] = await connection.execute(`
+    // Get all matches for this user with complete profile details
+    const [matchRows] = await connection.execute(`
       SELECT 
-        u.id, u.name, u.email,
-        up.age, up.gender, up.caste, up.religion, up.state, up.city,
-        up.occupation, up.education, up.profile_photo,
-        CASE WHEN m.id IS NOT NULL THEN 1 ELSE 0 END as already_matched
-      FROM users u
-      JOIN user_profiles up ON u.id = up.user_id
-      LEFT JOIN matches m ON (m.user_id = ? AND m.matched_user_id = u.id)
-      WHERE u.id != ? 
-        AND up.gender = ?
-        AND up.status = 'approved'
-        AND u.status = 'active'
-      ORDER BY 
-        already_matched ASC,
-        CASE WHEN up.religion = ? THEN 1 ELSE 2 END,
-        CASE WHEN up.state = ? THEN 1 ELSE 2 END,
-        CASE WHEN up.caste = ? THEN 1 ELSE 2 END,
-        ABS(up.age - ?) ASC
-    `, [userId, userId, oppositeGender, userProfile.religion, userProfile.state, userProfile.caste, userProfile.age])
-
-    // Get current matches for this user
-    const [currentMatches] = await connection.execute(`
-      SELECT 
-        u.id, u.name,
-        up.age, up.gender, up.caste, up.state, up.city,
-        m.created_at as matched_at
+        u.id,
+        u.name,
+        u.email,
+        u.phone,
+        up.age,
+        up.gender,
+        up.height,
+        up.weight,
+        up.caste,
+        up.religion,
+        up.mother_tongue,
+        up.marital_status,
+        up.education,
+        up.occupation,
+        up.income,
+        up.state,
+        up.city,
+        up.family_type,
+        up.family_status,
+        up.about_me,
+        up.partner_preferences,
+        up.profile_photo,
+        m.created_at as matched_at,
+        m.created_by_admin,
+        admin_user.name as matched_by_admin_name
       FROM matches m
       JOIN users u ON m.matched_user_id = u.id
       JOIN user_profiles up ON u.id = up.user_id
-      WHERE m.user_id = ?
+      LEFT JOIN users admin_user ON m.created_by_admin = admin_user.id
+      WHERE m.user_id = ? 
+        AND u.status = 'active' 
+        AND up.status = 'approved'
       ORDER BY m.created_at DESC
-    `, [userId])
+    `, [decoded.userId])
 
     await connection.end()
 
     return NextResponse.json({ 
-      potentialMatches,
-      currentMatches,
-      userProfile: {
-        gender: userProfile.gender,
-        age: userProfile.age,
-        caste: userProfile.caste,
-        religion: userProfile.religion,
-        state: userProfile.state
-      }
+      matches: matchRows,
+      total: (matchRows as any[]).length
     })
   } catch (error) {
-    console.error("Admin matches fetch error:", error)
+    console.error("User matches fetch error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
-// Create matches for a user
+// Get single match profile details - Fixed POST method
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization")
@@ -117,90 +93,101 @@ export async function POST(request: NextRequest) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
-    const { userId, matchedUserIds } = await request.json()
+    const { matchedUserId } = await request.json()
 
-    if (!userId || !matchedUserIds || !Array.isArray(matchedUserIds)) {
-      return NextResponse.json({ error: "User ID and matched user IDs are required" }, { status: 400 })
+    if (!matchedUserId) {
+      return NextResponse.json({ error: "Matched user ID is required" }, { status: 400 })
     }
 
     const connection = await mysql.createConnection(dbConfig)
 
-    // Verify admin role
-    const [adminRows] = await connection.execute("SELECT role FROM users WHERE id = ?", [decoded.userId])
-    const admin = (adminRows as any[])[0]
-    if (!admin || admin.role !== "admin") {
+    // Verify user role
+    const [userRows] = await connection.execute("SELECT role FROM users WHERE id = ?", [decoded.userId])
+    const user = (userRows as any[])[0]
+    if (!user || user.role !== "user") {
       await connection.end()
       return NextResponse.json({ error: "Access denied" }, { status: 403 })
     }
 
-    // Insert matches (avoiding duplicates)
-    for (const matchedUserId of matchedUserIds) {
-      try {
-        await connection.execute(
-          `INSERT IGNORE INTO matches (user_id, matched_user_id, created_by_admin) 
-           VALUES (?, ?, ?)`,
-          [userId, matchedUserId, decoded.userId]
-        )
-        
-        // Create reverse match as well (bidirectional)
-        await connection.execute(
-          `INSERT IGNORE INTO matches (user_id, matched_user_id, created_by_admin) 
-           VALUES (?, ?, ?)`,
-          [matchedUserId, userId, decoded.userId]
-        )
-      } catch (error) {
-        // Ignore duplicate key errors
-        console.log(`Match already exists: ${userId} <-> ${matchedUserId}`)
-      }
-    }
+    // Check if user has active subscription to view details
+    const [subscriptionRows] = await connection.execute(`
+      SELECT us.*, p.can_view_details
+      FROM user_subscriptions us
+      JOIN plans p ON us.plan_id = p.id
+      WHERE us.user_id = ? 
+        AND us.status = 'active'
+        AND p.type = 'normal'
+        AND us.expires_at > NOW()
+      ORDER BY us.expires_at DESC
+      LIMIT 1
+    `, [decoded.userId])
 
-    await connection.end()
+    const subscription = (subscriptionRows as any[])[0]
 
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error("Admin match creation error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
-
-// Delete a match
-export async function DELETE(request: NextRequest) {
-  try {
-    const authHeader = request.headers.get("authorization")
-    const token = authHeader?.replace("Bearer ", "")
-
-    if (!token) {
-      return NextResponse.json({ error: "No token provided" }, { status: 401 })
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
-    const { userId, matchedUserId } = await request.json()
-
-    if (!userId || !matchedUserId) {
-      return NextResponse.json({ error: "User ID and matched user ID are required" }, { status: 400 })
-    }
-
-    const connection = await mysql.createConnection(dbConfig)
-
-    // Verify admin role
-    const [adminRows] = await connection.execute("SELECT role FROM users WHERE id = ?", [decoded.userId])
-    const admin = (adminRows as any[])[0]
-    if (!admin || admin.role !== "admin") {
+    if (!subscription || !subscription.can_view_details) {
       await connection.end()
-      return NextResponse.json({ error: "Access denied" }, { status: 403 })
+      return NextResponse.json({ 
+        error: "Premium subscription required to view profile details" 
+      }, { status: 403 })
     }
 
-    // Delete both directions of the match
-    await connection.execute(
-      "DELETE FROM matches WHERE (user_id = ? AND matched_user_id = ?) OR (user_id = ? AND matched_user_id = ?)",
-      [userId, matchedUserId, matchedUserId, userId]
+    // Verify that this user is actually matched with the requested profile
+    const [matchVerification] = await connection.execute(
+      "SELECT id FROM matches WHERE user_id = ? AND matched_user_id = ?",
+      [decoded.userId, matchedUserId]
     )
 
+    if ((matchVerification as any[]).length === 0) {
+      await connection.end()
+      return NextResponse.json({ error: "Match not found" }, { status: 404 })
+    }
+
+    // Get complete profile details
+    const [profileRows] = await connection.execute(`
+      SELECT 
+        u.id,
+        u.name,
+        u.email,
+        u.phone,
+        up.age,
+        up.gender,
+        up.height,
+        up.weight,
+        up.caste,
+        up.religion,
+        up.mother_tongue,
+        up.marital_status,
+        up.education,
+        up.occupation,
+        up.income,
+        up.state,
+        up.city,
+        up.family_type,
+        up.family_status,
+        up.about_me,
+        up.partner_preferences,
+        up.profile_photo,
+        up.created_at,
+        up.updated_at
+      FROM users u
+      JOIN user_profiles up ON u.id = up.user_id
+      WHERE u.id = ? 
+        AND u.status = 'active' 
+        AND up.status = 'approved'
+    `, [matchedUserId])
+
+    const profile = (profileRows as any[])[0]
+
+    if (!profile) {
+      await connection.end()
+      return NextResponse.json({ error: "Profile not found" }, { status: 404 })
+    }
+
     await connection.end()
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ profile })
   } catch (error) {
-    console.error("Admin match deletion error:", error)
+    console.error("Match profile fetch error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
