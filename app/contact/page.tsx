@@ -63,8 +63,8 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900">Phone</h3>
-                      <p className="text-gray-600">+91 98765 43210</p>
-                      <p className="text-gray-600">+91 87654 32109</p>
+                      {/* <p className="text-gray-600">+91 98765 43210</p>
+                      <p className="text-gray-600">+91 87654 32109</p> */}
                     </div>
                   </div>
 
@@ -74,8 +74,8 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900">Email</h3>
-                      <p className="text-gray-600">support@matchb.com</p>
-                      <p className="text-gray-600">info@matchb.com</p>
+                      {/* <p className="text-gray-600">support@matchb.com</p>
+                      <p className="text-gray-600">info@matchb.com</p> */}
                     </div>
                   </div>
 
@@ -85,13 +85,13 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900">Address</h3>
-                      <p className="text-gray-600">
+                      {/* <p className="text-gray-600">
                         123 Business Center
                         <br />
                         MG Road, Bangalore
                         <br />
                         Karnataka 560001, India
-                      </p>
+                      </p> */}
                     </div>
                   </div>
 
