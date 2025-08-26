@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
     const education = searchParams.get('education') || ''
     const occupation = searchParams.get('occupation') || ''
 
-    // Build dynamic query
+    // Build dynamic query - REMOVED gender restriction to show both male and female
     let query = `
       SELECT 
         up.*,
@@ -116,10 +116,9 @@ export async function GET(request: NextRequest) {
       WHERE up.user_id != ? 
         AND up.status = 'approved'
         AND u.status = 'active'
-        AND up.gender != ?
     `
     
-    const queryParams: any[] = [decoded.userId, currentUser.gender]
+    const queryParams: any[] = [decoded.userId]
 
     // Add search filters
     if (location) {
@@ -127,6 +126,7 @@ export async function GET(request: NextRequest) {
       queryParams.push(`%${location}%`, `%${location}%`)
     }
 
+    // Only filter by gender if explicitly provided in search parameters
     if (gender) {
       query += ` AND up.gender = ?`
       queryParams.push(gender)

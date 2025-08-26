@@ -217,7 +217,7 @@ export default function RegisterPage() {
                   />
                   <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 </div>
-                <p className="text-xs text-gray-500">Include country code if international (e.g., +91 9876543210)</p>
+                <p className="text-xs text-gray-500">Include country code (e.g., +919876543210)</p>
               </div>
 
               <div className="space-y-2">

@@ -14,9 +14,12 @@ const dbConfig = {
 // Update a plan (Admin only)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params  
+    const planId = parseInt(id)
+
     const authHeader = request.headers.get("authorization")
     const token = authHeader?.replace("Bearer ", "")
 
@@ -25,7 +28,6 @@ export async function PUT(
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
-    const planId = parseInt(params.id)
     
     if (isNaN(planId)) {
       return NextResponse.json({ error: "Invalid plan ID" }, { status: 400 })
@@ -51,8 +53,8 @@ export async function PUT(
       return NextResponse.json({ error: "Plan not found" }, { status: 404 })
     }
 
-    // If updating specific fields only (like status toggle)
-    if (Object.keys(body).length === 1 && 'is_active' in body) {
+    // If only toggling status
+    if (Object.keys(body).length === 1 && "is_active" in body) {
       await connection.execute(
         "UPDATE plans SET is_active = ?, updated_at = NOW() WHERE id = ?",
         [is_active, planId]
@@ -74,7 +76,7 @@ export async function PUT(
         return NextResponse.json({ error: "Duration must be greater than 0" }, { status: 400 })
       }
 
-      // Check if plan name already exists (excluding current plan)
+      // Check duplicate name
       const [duplicatePlan] = await connection.execute(
         "SELECT id FROM plans WHERE name = ? AND id != ?", 
         [name, planId]
@@ -116,9 +118,12 @@ export async function PUT(
 // Delete a plan (Admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params  // ✅ must await params
+    const planId = parseInt(id)
+
     const authHeader = request.headers.get("authorization")
     const token = authHeader?.replace("Bearer ", "")
 
@@ -127,7 +132,6 @@ export async function DELETE(
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
-    const planId = parseInt(params.id)
     
     if (isNaN(planId)) {
       return NextResponse.json({ error: "Invalid plan ID" }, { status: 400 })
@@ -150,7 +154,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Plan not found" }, { status: 404 })
     }
 
-    // Check if plan is being used in any active payments
+    // Check if plan is being used in verified payments
     const [activePayments] = await connection.execute(
       "SELECT COUNT(*) as count FROM payments WHERE plan_id = ? AND status = 'verified'", 
       [planId]
@@ -163,7 +167,7 @@ export async function DELETE(
       }, { status: 400 })
     }
 
-    // Delete the plan
+    // Delete plan
     await connection.execute("DELETE FROM plans WHERE id = ?", [planId])
 
     await connection.end()

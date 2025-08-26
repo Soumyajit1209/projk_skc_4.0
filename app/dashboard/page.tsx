@@ -18,6 +18,7 @@ import EditProfileModal from "@/components/dashboard/EditProfileModal";
 import ChangePasswordModal from "@/components/dashboard/ChangePasswordModal";
 import { UserProfile, Plan, ActivePlan, CallLog, SearchFilters } from "../../types/types";
 import { formatDate } from "@/utils/formatters";
+import toast, { Toaster } from "react-hot-toast";
 
 export default function Dashboard() {
   const { user, logout, loading } = useAuth();
@@ -135,9 +136,12 @@ export default function Dashboard() {
           partner_preferences: data.profile.partner_preferences || "",
           profile_photo: data.profile.profile_photo || "",
         });
+      } else {
+        toast.error("Failed to fetch user profile");
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
+      toast.error("An error occurred while fetching your profile");
     } finally {
       setLoadingProfile(false);
     }
@@ -153,9 +157,12 @@ export default function Dashboard() {
       if (response.ok) {
         const data = await response.json();
         setMatches(data.matches || []);
+      } else {
+        toast.error("Failed to fetch matches");
       }
     } catch (error) {
       console.error("Error fetching matches:", error);
+      toast.error("An error occurred while fetching matches");
     } finally {
       setLoadingMatches(false);
     }
@@ -177,9 +184,13 @@ export default function Dashboard() {
       if (response.ok) {
         const data = await response.json();
         setSearchResults(data.profiles || []);
+        toast.success("Search completed successfully");
+      } else {
+        toast.error("Failed to search profiles");
       }
     } catch (error) {
       console.error("Error searching profiles:", error);
+      toast.error("An error occurred while searching profiles");
     } finally {
       setLoadingSearch(false);
     }
@@ -195,9 +206,12 @@ export default function Dashboard() {
       if (response.ok) {
         const data = await response.json();
         setActivePlans(data.plans);
+      } else {
+        toast.error("Failed to fetch active plans");
       }
     } catch (error) {
       console.error("Error fetching active plans:", error);
+      toast.error("An error occurred while fetching active plans");
     }
   };
 
@@ -212,9 +226,13 @@ export default function Dashboard() {
       if (response.ok) {
         const data = await response.json();
         setCallLogs(data.logs || []);
+        toast.success("Call logs fetched successfully");
+      } else {
+        toast.error("Failed to fetch call logs");
       }
     } catch (error) {
       console.error("Error fetching call logs:", error);
+      toast.error("An error occurred while fetching call logs");
       setCallLogs([]);
     } finally {
       setLoadingCallLogs(false);
@@ -228,9 +246,13 @@ export default function Dashboard() {
       if (response.ok) {
         const data = await response.json();
         setPlans(data.plans);
+        toast.success("Plans fetched successfully");
+      } else {
+        toast.error("Failed to fetch plans");
       }
     } catch (error) {
       console.error("Error fetching plans:", error);
+      toast.error("An error occurred while fetching plans");
     } finally {
       setLoadingPlans(false);
     }
@@ -239,6 +261,7 @@ export default function Dashboard() {
   const initiateCall = async (targetUserId: number, targetName: string) => {
     if (!activePlans.call_plan?.isActive || activePlans.call_plan.credits_remaining <= 0) {
       setShowUpgradeModal(true);
+      toast.error("Insufficient call credits. Please upgrade your plan.");
       return;
     }
 
@@ -257,13 +280,14 @@ export default function Dashboard() {
       if (response.ok) {
         const data = await response.json();
         window.location.href = data.callUrl;
+        toast.success(`Initiating call with ${targetName}`);
       } else {
         const errorData = await response.json();
-        alert(errorData.error || "Failed to initiate call");
+        toast.error(errorData.error || "Failed to initiate call");
       }
     } catch (error) {
       console.error("Error initiating call:", error);
-      alert("An error occurred while making the call");
+      toast.error("An error occurred while making the call");
     } finally {
       setMakingCall(false);
     }
@@ -272,6 +296,7 @@ export default function Dashboard() {
   const viewProfileDetails = async (profileId: number) => {
     if (!activePlans.normal_plan?.isActive) {
       setShowUpgradeModal(true);
+      toast.error("Premium subscription required to view profile details");
       return;
     }
 
@@ -285,17 +310,19 @@ export default function Dashboard() {
         const data = await response.json();
         setSelectedMatch(data.profile);
         setShowProfileDetails(true);
+        toast.success("Profile details loaded successfully");
       } else {
         const errorData = await response.json();
         if (errorData.error.includes("Premium subscription required")) {
           setShowUpgradeModal(true);
+          toast.error("Premium subscription required");
         } else {
-          alert(errorData.error || "Failed to fetch profile details");
+          toast.error(errorData.error || "Failed to fetch profile details");
         }
       }
     } catch (error) {
       console.error("Error fetching profile details:", error);
-      alert("An error occurred while fetching profile details");
+      toast.error("An error occurred while fetching profile details");
     }
   };
 
@@ -338,15 +365,18 @@ export default function Dashboard() {
       if (response.ok) {
         setEditSuccess(true);
         await fetchUserProfile();
+        toast.success("Profile updated successfully");
         setTimeout(() => {
           setShowEditProfile(false);
           setEditSuccess(false);
         }, 2000);
       } else {
         setEditError(data.error || "Failed to update profile");
+        toast.error(data.error || "Failed to update profile");
       }
     } catch (error) {
       setEditError("An error occurred while updating your profile");
+      toast.error("An error occurred while updating your profile");
     } finally {
       setEditingProfile(false);
     }
@@ -360,12 +390,14 @@ export default function Dashboard() {
 
     if (passwordFormData.newPassword !== passwordFormData.confirmPassword) {
       setPasswordError("New passwords do not match");
+      toast.error("New passwords do not match");
       setChangingPassword(false);
       return;
     }
 
     if (passwordFormData.newPassword.length < 6) {
       setPasswordError("New password must be at least 6 characters long");
+      toast.error("New password must be at least 6 characters long");
       setChangingPassword(false);
       return;
     }
@@ -393,15 +425,18 @@ export default function Dashboard() {
           newPassword: "",
           confirmPassword: "",
         });
+        toast.success("Password changed successfully");
         setTimeout(() => {
           setShowChangePassword(false);
           setPasswordSuccess(false);
         }, 2000);
       } else {
         setPasswordError(data.error || "Failed to change password");
+        toast.error(data.error || "Failed to change password");
       }
     } catch (error) {
       setPasswordError("An error occurred while changing your password");
+      toast.error("An error occurred while changing your password");
     } finally {
       setChangingPassword(false);
     }
@@ -420,6 +455,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+      <Toaster position="top-right" reverseOrder={false} />
       <Header
         user={user}
         userProfile={userProfile}
@@ -487,6 +523,7 @@ export default function Dashboard() {
                   occupation: "",
                 });
                 setSearchResults([]);
+                toast.success("Search filters reset");
               }}
               activePlans={activePlans}
               onUpgrade={() => {
@@ -507,6 +544,7 @@ export default function Dashboard() {
           setSelectedPlan(plan);
           setShowPlansModal(false);
           setShowPaymentModal(true);
+          toast.success("Plan selected");
         }}
       />
       <PaymentModal
@@ -516,6 +554,7 @@ export default function Dashboard() {
         onPaymentComplete={() => {
           setShowPaymentModal(false);
           router.push("/payments/submit");
+          toast.success("Payment submitted successfully");
         }}
       />
       <CallLogsModal
@@ -532,6 +571,7 @@ export default function Dashboard() {
           setShowUpgradeModal(false);
           fetchPlans();
           setShowPlansModal(true);
+          toast.success("Viewing available plans");
         }}
       />
       <ProfileDetailsModal
