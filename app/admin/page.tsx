@@ -5,7 +5,7 @@ import { useAuth } from "@/components/auth-provider"
 import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Users, CreditCard, Heart, Settings } from "lucide-react"
+import { Users, CreditCard, Heart, Settings, PhoneCall } from "lucide-react"
 import Image from "next/image"
 import AdminLogin from "@/components/admin/AdminLogin"
 import StatsCards from "@/components/admin/StatsCards"
@@ -17,6 +17,7 @@ import ProfileViewDialog from "@/components/admin/ProfileViewDialog"
 import ProfileApprovalDialog from "@/components/admin/ProfileApprovalDialog"
 import PaymentVerificationDialog from "@/components/admin/PaymentVerificationDialog"
 import AdminSettings from "@/components/admin/AdminSettings"
+import CallSubscriptions from "@/components/admin/CallSubscriptions"
 import { UserProfile, Payment, PotentialMatch, CurrentMatch } from "@/components/admin/types"
 import { fetchProfiles, fetchStats, fetchPayments, fetchMatches, handleProfileApproval, handlePaymentVerification, updateUserStatus, createMatches, removeMatch } from "@/components/admin/api"
 import { Button } from "@/components/ui/button"
@@ -214,7 +215,7 @@ export default function AdminPage() {
         <StatsCards stats={stats} />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="profiles" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               User Profiles
@@ -226,6 +227,10 @@ export default function AdminPage() {
             <TabsTrigger value="matches" className="flex items-center gap-2">
               <Heart className="h-4 w-4" />
               Matchmaking
+            </TabsTrigger>
+            <TabsTrigger value="call-subscriptions" className="flex items-center gap-2">
+              <PhoneCall className="h-4 w-4" />
+              Call Subscriptions
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
@@ -271,6 +276,10 @@ export default function AdminPage() {
               handleCreateMatches={handleCreateMatches}
               handleRemoveMatch={handleRemoveMatch}
             />
+          </TabsContent>
+
+          <TabsContent value="call-subscriptions" className="space-y-6">
+            <CallSubscriptions />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">

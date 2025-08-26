@@ -1,3 +1,4 @@
+
 import { type NextRequest, NextResponse } from "next/server"
 import mysql from "mysql2/promise"
 import jwt from "jsonwebtoken"
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
       "SELECT COUNT(*) as approvedProfiles FROM user_profiles WHERE status = 'approved'",
       
       // Match stats
-      "SELECT COUNT(*) as totalMatches FROM user_matches",
+      "SELECT COUNT(*) as totalMatches FROM matches", // Changed from user_matches to matches
       
       // Call stats
       "SELECT COUNT(*) as activeCallSessions FROM call_sessions WHERE status IN ('initiated', 'ringing', 'in_progress')",
@@ -55,22 +56,30 @@ export async function GET(request: NextRequest) {
     ]
 
     const results = await Promise.all(
-      statsQueries.map(query => connection.execute(query))
+      statsQueries.map(async (query, index) => {
+        try {
+          const [rows] = await connection.execute(query)
+          return rows
+        } catch (error) {
+          console.error(`Error executing query ${index + 1}: ${query}`, error)
+          throw error // Re-throw to be caught by outer try-catch
+        }
+      })
     )
 
     const stats = {
-      totalUsers: (results[0][0] as any[])[0]?.totalUsers || 0,
-      activeUsers: (results[1][0] as any[])[0]?.activeUsers || 0,
-      maleUsers: (results[2][0] as any[])[0]?.maleUsers || 0,
-      femaleUsers: (results[3][0] as any[])[0]?.femaleUsers || 0,
-      pendingProfiles: (results[4][0] as any[])[0]?.pendingProfiles || 0,
-      approvedProfiles: (results[5][0] as any[])[0]?.approvedProfiles || 0,
-      totalMatches: (results[6][0] as any[])[0]?.totalMatches || 0,
-      activeCallSessions: (results[7][0] as any[])[0]?.activeCallSessions || 0,
-      callMinutesUsed: (results[8][0] as any[])[0]?.callMinutesUsed || 0,
-      totalRevenue: (results[9][0] as any[])[0]?.totalRevenue || 0,
-      normalSubscriptions: (results[10][0] as any[])[0]?.normalSubscriptions || 0,
-      callSubscriptions: (results[11][0] as any[])[0]?.callSubscriptions || 0,
+      totalUsers: (results[0] as any[])[0]?.totalUsers || 0,
+      activeUsers: (results[1] as any[])[0]?.activeUsers || 0,
+      maleUsers: (results[2] as any[])[0]?.maleUsers || 0,
+      femaleUsers: (results[3] as any[])[0]?.femaleUsers || 0,
+      pendingProfiles: (results[4] as any[])[0]?.pendingProfiles || 0,
+      approvedProfiles: (results[5] as any[])[0]?.approvedProfiles || 0,
+      totalMatches: (results[6] as any[])[0]?.totalMatches || 0,
+      activeCallSessions: (results[7] as any[])[0]?.activeCallSessions || 0,
+      callMinutesUsed: (results[8] as any[])[0]?.callMinutesUsed || 0,
+      totalRevenue: (results[9] as any[])[0]?.totalRevenue || 0,
+      normalSubscriptions: (results[10] as any[])[0]?.normalSubscriptions || 0,
+      callSubscriptions: (results[11] as any[])[0]?.callSubscriptions || 0,
     }
 
     await connection.end()
