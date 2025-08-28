@@ -185,60 +185,139 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center gap-3">
-              <Image src="/matchb-logo.png" alt="MatchB" width={120} height={40} className="h-8 w-auto" />
+      {/* Header - Responsive */}
+      <div className="bg-white shadow-sm border-b sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-3 sm:py-4 gap-3 sm:gap-0">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Image 
+                src="/matchb-logo.png" 
+                alt="MatchB" 
+                width={120} 
+                height={40} 
+                className="h-6 sm:h-8 w-auto" 
+              />
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Admin Dashboard</h1>
-                <p className="text-sm text-gray-600">Manage matrimonial profiles and system</p>
+                <h1 className="text-lg sm:text-xl font-bold text-gray-900">Admin Dashboard</h1>
+                <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">
+                  Manage matrimonial profiles and system
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">Welcome, {user?.name}</span>
-              <Button variant="outline" onClick={() => router.push("/")}>
-                Back to Site
+            <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+              <span className="text-xs sm:text-sm text-gray-600 truncate">
+                Welcome, {user?.name}
+              </span>
+              <Button variant="outline" size="sm" onClick={() => router.push("/")}>
+                <span className="hidden sm:inline">Back to Site</span>
+                <span className="sm:hidden">Back</span>
               </Button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
+        {/* Error Alert */}
         {error && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertDescription>{error}</AlertDescription>
+          <Alert variant="destructive" className="mb-4 sm:mb-6">
+            <AlertDescription className="text-sm">{error}</AlertDescription>
           </Alert>
         )}
-
         <StatsCards stats={stats} />
 
+        {/* Tabs - Responsive */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          {/* Mobile Tab List - Scrollable */}
+          <div className="block sm:hidden mb-6">
+            <div className="flex overflow-x-auto space-x-2 pb-2 snap-x snap-mandatory scrollbar-hide">
+              <Button
+                variant={activeTab === "profiles" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveTab("profiles")}
+                className="whitespace-nowrap min-w-[100px] snap-start"
+              >
+                <Users className="h-4 w-4 mr-1" />
+                Profiles
+              </Button>
+              <Button
+                variant={activeTab === "payments" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveTab("payments")}
+                className="whitespace-nowrap min-w-[100px] snap-start"
+              >
+                <CreditCard className="h-4 w-4 mr-1" />
+                Payments
+              </Button>
+              <Button
+                variant={activeTab === "matches" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveTab("matches")}
+                className="whitespace-nowrap min-w-[100px] snap-start"
+              >
+                <Heart className="h-4 w-4 mr-1" />
+                Matches
+              </Button>
+              <Button
+                variant={activeTab === "call-subscriptions" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveTab("call-subscriptions")}
+                className="whitespace-nowrap min-w-[100px] snap-start"
+              >
+                <PhoneCall className="h-4 w-4 mr-1" />
+                Calls
+              </Button>
+              <Button
+                variant={activeTab === "settings" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveTab("settings")}
+                className="whitespace-nowrap min-w-[100px] snap-start"
+              >
+                <Settings className="h-4 w-4 mr-1" />
+                Settings
+              </Button>
+            </div>
+          </div>
+          <style jsx>{`
+            .scrollbar-hide::-webkit-scrollbar {
+              display: none;
+            }
+            .scrollbar-hide {
+              -ms-overflow-style: none;
+              scrollbar-width: none;
+              scroll-behavior: smooth;
+              -webkit-overflow-scrolling: touch;
+            }
+          `}</style>
+          <TabsList className="hidden sm:grid w-full grid-cols-5 mb-6">
             <TabsTrigger value="profiles" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
-              User Profiles
+              <span className="hidden lg:inline">User Profiles</span>
+              <span className="lg:hidden">Profiles</span>
             </TabsTrigger>
             <TabsTrigger value="payments" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
-              Payments
+              <span className="hidden lg:inline">Payments</span>
+              <span className="lg:hidden">Pay</span>
             </TabsTrigger>
             <TabsTrigger value="matches" className="flex items-center gap-2">
               <Heart className="h-4 w-4" />
-              Matchmaking
+              <span className="hidden lg:inline">Matchmaking</span>
+              <span className="lg:hidden">Match</span>
             </TabsTrigger>
             <TabsTrigger value="call-subscriptions" className="flex items-center gap-2">
               <PhoneCall className="h-4 w-4" />
-              Call Subscriptions
+              <span className="hidden lg:inline">Call Subscriptions</span>
+              <span className="lg:hidden">Calls</span>
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
-              Settings
+              <span className="hidden lg:inline">Settings</span>
+              <span className="lg:hidden">Set</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="profiles" className="space-y-6">
+          <TabsContent value="profiles" className="space-y-4 sm:space-y-6">
             <ProfileFilters profiles={filteredProfiles} filters={filters} setFilters={setFilters} />
             {!loadingProfiles && (
               <ProfileList
@@ -253,7 +332,7 @@ export default function AdminPage() {
             )}
           </TabsContent>
 
-          <TabsContent value="payments" className="space-y-6">
+          <TabsContent value="payments" className="space-y-4 sm:space-y-6">
             <PaymentList
               payments={payments}
               loadingPayments={loadingPayments}
@@ -261,7 +340,7 @@ export default function AdminPage() {
             />
           </TabsContent>
 
-          <TabsContent value="matches" className="space-y-6">
+          <TabsContent value="matches" className="space-y-4 sm:space-y-6">
             <Matchmaking
               profiles={profiles}
               selectedUserId={selectedUserId}
@@ -278,11 +357,11 @@ export default function AdminPage() {
             />
           </TabsContent>
 
-          <TabsContent value="call-subscriptions" className="space-y-6">
+          <TabsContent value="call-subscriptions" className="space-y-4 sm:space-y-6">
             <CallSubscriptions />
           </TabsContent>
 
-          <TabsContent value="settings" className="space-y-6">
+          <TabsContent value="settings" className="space-y-4 sm:space-y-6">
             <AdminSettings
               userId={user.id}
               onUserAdded={() => {

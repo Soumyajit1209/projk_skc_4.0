@@ -1,4 +1,3 @@
-// components/admin/AdminPlansManagement.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -246,7 +245,7 @@ export default function AdminPlansManagement() {
 
   if (loading) {
     return (
-      <Card>
+      <Card className="mx-auto w-full max-w-7xl">
         <CardContent className="flex items-center justify-center py-8">
           <Loader2 className="h-8 w-8 animate-spin" />
         </CardContent>
@@ -256,23 +255,25 @@ export default function AdminPlansManagement() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+      <Card className="mx-auto w-full max-w-7xl">
+        <CardHeader className="px-4 sm:px-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
                 <CreditCard className="h-5 w-5" />
                 Plans Management
               </CardTitle>
-              <CardDescription>Create, edit, and manage subscription plans</CardDescription>
+              <CardDescription className="text-sm sm:text-base">
+                Create, edit, and manage subscription plans
+              </CardDescription>
             </div>
-            <Button onClick={() => openDialog('create')}>
+            <Button onClick={() => openDialog('create')} size="sm">
               <Plus className="h-4 w-4 mr-2" />
               Add New Plan
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 sm:px-6">
           {message && (
             <Alert variant={message.type === 'error' ? 'destructive' : 'default'} className="mb-6">
               <AlertDescription>{message.text}</AlertDescription>
@@ -283,18 +284,18 @@ export default function AdminPlansManagement() {
             {plans.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <CreditCard className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p>No plans found. Create your first plan to get started.</p>
+                <p className="text-sm sm:text-base">No plans found. Create your first plan to get started.</p>
               </div>
             ) : (
               plans.map((plan) => (
                 <div
                   key={plan.id}
-                  className="flex items-center justify-between p-6 border rounded-lg hover:bg-gray-50"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-6 border rounded-lg hover:bg-gray-50"
                 >
-                  <div className="flex-1">
+                  <div className="flex-1 mb-4 sm:mb-0">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold">{plan.name}</h3>
-                      <Badge variant={plan.is_active ? 'default' : 'secondary'}>
+                      <h3 className="text-base sm:text-lg font-semibold">{plan.name}</h3>
+                      <Badge variant={plan.is_active ? 'default' : 'secondary'} className="text-xs sm:text-sm">
                         {plan.is_active ? (
                           <>
                             <CheckCircle className="h-3 w-3 mr-1" />
@@ -309,7 +310,7 @@ export default function AdminPlansManagement() {
                       </Badge>
                     </div>
 
-                    <div className="flex items-center gap-6 text-sm text-gray-600 mb-2">
+                    <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-sm text-gray-600 mb-2">
                       <div className="flex items-center gap-1">
                         <span className="font-medium">₹{plan.price}</span>
                       </div>
@@ -320,11 +321,11 @@ export default function AdminPlansManagement() {
                     </div>
 
                     {plan.description && (
-                      <p className="text-sm text-gray-600 mb-2">{plan.description}</p>
+                      <p className="text-sm text-gray-600 mb-2 line-clamp-2">{plan.description}</p>
                     )}
 
                     {plan.features && (
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-gray-500 line-clamp-2">
                         <strong>Features:</strong> {plan.features}
                       </div>
                     )}
@@ -332,20 +333,20 @@ export default function AdminPlansManagement() {
                     <div className="text-xs text-gray-400 mt-2">
                       Created: {new Date(plan.created_at).toLocaleDateString()}
                       {plan.updated_at && (
-                        <span className="ml-4">
+                        <span className="sm:ml-4 block sm:inline">
                           Updated: {new Date(plan.updated_at).toLocaleDateString()}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 ml-4">
+                  <div className="flex items-center gap-2 sm:ml-4 flex-wrap justify-start sm:justify-end">
                     <div className="flex items-center space-x-2">
                       <Switch
                         checked={plan.is_active}
                         onCheckedChange={() => togglePlanStatus(plan.id, plan.is_active)}
                       />
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-gray-500 hidden sm:inline">
                         {plan.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </div>
@@ -378,12 +379,12 @@ export default function AdminPlansManagement() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialog.open && (dialog.type === 'create' || dialog.type === 'edit')} onOpenChange={closeDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl">
               {dialog.type === 'create' ? 'Create New Plan' : 'Edit Plan'}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-sm sm:text-base">
               {dialog.type === 'create' 
                 ? 'Create a new subscription plan for users'
                 : 'Update the selected plan details'
@@ -398,9 +399,9 @@ export default function AdminPlansManagement() {
               </Alert>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="plan-name">Plan Name *</Label>
+                <Label htmlFor="plan-name" className="text-sm sm:text-base">Plan Name *</Label>
                 <Input
                   id="plan-name"
                   value={formData.name}
@@ -408,11 +409,12 @@ export default function AdminPlansManagement() {
                   placeholder="e.g., Premium Plan"
                   required
                   disabled={isSubmitting}
+                  className="text-sm sm:text-base"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="plan-price">Price (₹) *</Label>
+                <Label htmlFor="plan-price" className="text-sm sm:text-base">Price (₹) *</Label>
                 <Input
                   id="plan-price"
                   type="number"
@@ -423,11 +425,12 @@ export default function AdminPlansManagement() {
                   placeholder="e.g., 999"
                   required
                   disabled={isSubmitting}
+                  className="text-sm sm:text-base"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="plan-duration">Duration (Months) *</Label>
+                <Label htmlFor="plan-duration" className="text-sm sm:text-base">Duration (Months) *</Label>
                 <Input
                   id="plan-duration"
                   type="number"
@@ -437,11 +440,12 @@ export default function AdminPlansManagement() {
                   placeholder="e.g., 6"
                   required
                   disabled={isSubmitting}
+                  className="text-sm sm:text-base"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="plan-status">Status</Label>
+                <Label htmlFor="plan-status" className="text-sm sm:text-base">Status</Label>
                 <div className="flex items-center space-x-2 pt-2">
                   <Switch
                     id="plan-status"
@@ -449,7 +453,7 @@ export default function AdminPlansManagement() {
                     onCheckedChange={(checked) => handleInputChange("is_active", checked)}
                     disabled={isSubmitting}
                   />
-                  <span className="text-sm">
+                  <span className="text-sm sm:text-base">
                     {formData.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </div>
@@ -457,7 +461,7 @@ export default function AdminPlansManagement() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="plan-features">Features</Label>
+              <Label htmlFor="plan-features" className="text-sm sm:text-base">Features</Label>
               <Textarea
                 id="plan-features"
                 value={formData.features}
@@ -465,11 +469,12 @@ export default function AdminPlansManagement() {
                 placeholder="List of features included in this plan..."
                 disabled={isSubmitting}
                 rows={3}
+                className="text-sm sm:text-base"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="plan-description">Description</Label>
+              <Label htmlFor="plan-description" className="text-sm sm:text-base">Description</Label>
               <Textarea
                 id="plan-description"
                 value={formData.description}
@@ -477,15 +482,16 @@ export default function AdminPlansManagement() {
                 placeholder="Brief description of the plan..."
                 disabled={isSubmitting}
                 rows={3}
+                className="text-sm sm:text-base"
               />
             </div>
 
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={closeDialog} disabled={isSubmitting}>
+              <Button type="button" variant="outline" onClick={closeDialog} disabled={isSubmitting} size="sm">
                 <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting} size="sm">
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -505,17 +511,17 @@ export default function AdminPlansManagement() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={dialog.open && dialog.type === 'delete'} onOpenChange={closeDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete Plan</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl">Delete Plan</DialogTitle>
+            <DialogDescription className="text-sm sm:text-base">
               Are you sure you want to delete this plan? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
 
           {dialog.plan && (
             <div className="p-4 bg-red-50 rounded-lg">
-              <h3 className="font-medium text-red-900">{dialog.plan.name}</h3>
+              <h3 className="font-medium text-red-900 text-base sm:text-lg">{dialog.plan.name}</h3>
               <p className="text-sm text-red-700">
                 ₹{dialog.plan.price} for {dialog.plan.duration_months} month{dialog.plan.duration_months > 1 ? 's' : ''}
               </p>
@@ -523,13 +529,14 @@ export default function AdminPlansManagement() {
           )}
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={closeDialog} disabled={isSubmitting}>
+            <Button variant="outline" onClick={closeDialog} disabled={isSubmitting} size="sm">
               Cancel
             </Button>
             <Button 
               variant="destructive" 
               onClick={handleDelete}
               disabled={isSubmitting}
+              size="sm"
             >
               {isSubmitting ? (
                 <>

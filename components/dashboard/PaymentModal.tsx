@@ -1,9 +1,9 @@
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { QrCode, CreditCard, Copy, Check } from "lucide-react";
 import { Plan } from "../../types/types";
+import Image from "next/image";
 
 interface PaymentModalProps {
   open: boolean;
@@ -44,7 +44,13 @@ export default function PaymentModal({ open, onOpenChange, selectedPlan, onPayme
             </div>
             <div className="text-center">
               <div className="bg-white p-6 rounded-lg border-2 border-dashed border-gray-200 mb-4">
-                <QrCode className="h-32 w-32 mx-auto text-gray-400 mb-2" />
+                <Image
+                  src="/qr_code.png"
+                  alt="QR Code for Payment"
+                  width={128}
+                  height={128}
+                  className="mx-auto mb-2"
+                />
                 <p className="text-sm text-gray-500">Scan QR code to pay</p>
                 <p className="text-xs text-gray-400">or use UPI details below</p>
               </div>
@@ -53,12 +59,12 @@ export default function PaymentModal({ open, onOpenChange, selectedPlan, onPayme
               <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
                 <div>
                   <p className="font-medium text-sm text-blue-900">UPI ID</p>
-                  <p className="text-sm text-blue-700 font-mono">matchb@paytm</p>
+                  <p className="text-sm text-blue-700 font-mono">ssa983031-1@oksbi</p>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => copyToClipboard("matchb@paytm")}
+                  onClick={() => copyToClipboard("ssa983031-1@oksbi")}
                   className="text-blue-600 hover:text-blue-700 hover:bg-blue-100"
                 >
                   <Copy className="h-4 w-4" />

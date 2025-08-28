@@ -1,4 +1,3 @@
-
 "use client"
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -29,16 +28,18 @@ export function Plans() {
           throw new Error("Failed to fetch plans")
         }
         const data = await response.json()
+        console.log("API Response:", data.plans)
         const formattedPlans = data.plans.map((plan: any) => {
           let features: string[] | null = null
-          if (plan.features && typeof plan.features === "string") {
-      
-            features = plan.features
-              .split(",")
-              .map((feature: string) => feature.trim())
-              .filter((feature: string) => feature !== "")
-            if (features.length === 0) {
-              features = null
+          if (plan.features) {
+            if (typeof plan.features === "string") {
+              features = plan.features
+                .split(",")
+                .map((feature: string) => feature.trim())
+                .filter((feature: string) => feature !== "")
+            } else if (Array.isArray(plan.features)) {
+              features = plan.features.filter((feature: string) => feature.trim() !== "")
+              
             }
           }
           const price = parseFloat(String(plan.price))
@@ -55,6 +56,7 @@ export function Plans() {
         setPlans(formattedPlans)
         setLoading(false)
       } catch (err) {
+        console.error("Fetch error:", err) // Debug: Log any errors
         setError("Failed to load plans. Please try again later.")
         setLoading(false)
       }
@@ -113,7 +115,7 @@ export function Plans() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <ul className="space-y-3">
-                  {Array.isArray(plan.features) ? (
+                  {Array.isArray(plan.features) && plan.features.length > 0 ? (
                     plan.features.map((feature, featureIndex) => (
                       <li key={featureIndex} className="flex items-center gap-3">
                         <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
@@ -124,10 +126,10 @@ export function Plans() {
                     <li className="text-gray-500">No features available</li>
                   )}
                 </ul>
-                <Link href="/register" className="block">
+                <Link href={`/register?planId=${plan.id}`} className="block">
                   <Button
                     className={`w-full mt-6 ${
-                      plan.popular ? "bg-rose-600 hover:bg-rose-700" : "bg-gray-500 hover:bg-gray-500"
+                      plan.popular ? "bg-rose-600 hover:bg-rose-700" : "bg-gray-500 hover:bg-gray-600"
                     }`}
                   >
                     Get Started

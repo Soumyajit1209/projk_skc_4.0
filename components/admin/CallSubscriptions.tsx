@@ -319,19 +319,23 @@ export default function CallSubscriptions() {
   })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header Card - Responsive */}
       <Card className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <CardTitle className="text-2xl font-bold">Call Subscription Management</CardTitle>
-              <CardDescription className="text-blue-100">
+              <CardTitle className="text-lg sm:text-xl lg:text-2xl font-bold">
+                Call Subscription Management
+              </CardTitle>
+              <CardDescription className="text-blue-100 text-sm sm:text-base">
                 Manage call payments, verify subscriptions, and monitor Exotel credits
               </CardDescription>
             </div>
             <Button
               variant="outline"
-              className="border-white/30 text-white hover:bg-white/10"
+              size="sm"
+              className="border-white/30 text-white hover:bg-white/10 w-full sm:w-auto"
               onClick={() => {
                 if (exotelCredit) {
                   setExotelDialog({
@@ -344,51 +348,52 @@ export default function CallSubscriptions() {
               }}
             >
               <Settings className="h-4 w-4 mr-2" />
-              Exotel Settings
+              <span className="hidden sm:inline">Exotel Settings</span>
+              <span className="sm:hidden">Settings</span>
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 sm:px-6 pb-4 sm:pb-6">
           {loadingExotelCredit ? (
             <div className="flex items-center justify-center py-4">
               <RefreshCw className="h-6 w-6 animate-spin mr-2" />
-              Loading Exotel credits...
+              <span className="text-sm sm:text-base">Loading Exotel credits...</span>
             </div>
           ) : exotelCredit ? (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="bg-white/10 rounded-lg p-3 sm:p-4 backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm opacity-90">Total Credits</span>
-                  <Zap className="h-4 w-4 opacity-80" />
+                  <span className="text-xs sm:text-sm opacity-90">Total Credits</span>
+                  <Zap className="h-3 w-3 sm:h-4 sm:w-4 opacity-80" />
                 </div>
-                <div className="text-2xl font-bold">{exotelCredit.total_credits}</div>
+                <div className="text-lg sm:text-2xl font-bold">{exotelCredit.total_credits}</div>
                 <div className="text-xs opacity-70">Available credits</div>
               </div>
-              <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+              <div className="bg-white/10 rounded-lg p-3 sm:p-4 backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm opacity-90">Used Credits</span>
-                  <TrendingUp className="h-4 w-4 opacity-80" />
+                  <span className="text-xs sm:text-sm opacity-90">Used Credits</span>
+                  <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 opacity-80" />
                 </div>
-                <div className="text-2xl font-bold">{exotelCredit.used_credits}</div>
+                <div className="text-lg sm:text-2xl font-bold">{exotelCredit.used_credits}</div>
                 <Progress 
                   value={(exotelCredit.used_credits / exotelCredit.total_credits) * 100} 
                   className="mt-2 bg-white/20"
                 />
               </div>
-              <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+              <div className="bg-white/10 rounded-lg p-3 sm:p-4 backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm opacity-90">Remaining</span>
-                  <Activity className="h-4 w-4 opacity-80" />
+                  <span className="text-xs sm:text-sm opacity-90">Remaining</span>
+                  <Activity className="h-3 w-3 sm:h-4 sm:w-4 opacity-80" />
                 </div>
-                <div className="text-2xl font-bold">{exotelCredit.remaining_credits}</div>
+                <div className="text-lg sm:text-2xl font-bold">{exotelCredit.remaining_credits}</div>
                 <div className="text-xs opacity-70">Credits left</div>
               </div>
-              <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+              <div className="bg-white/10 rounded-lg p-3 sm:p-4 backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm opacity-90">Monthly Usage</span>
-                  <Clock className="h-4 w-4 opacity-80" />
+                  <span className="text-xs sm:text-sm opacity-90">Monthly Usage</span>
+                  <Clock className="h-3 w-3 sm:h-4 sm:w-4 opacity-80" />
                 </div>
-                <div className="text-2xl font-bold">{exotelCredit.current_month_usage}</div>
+                <div className="text-lg sm:text-2xl font-bold">{exotelCredit.current_month_usage}</div>
                 <div className="text-xs opacity-70">
                   of {exotelCredit.monthly_limit} limit
                 </div>
@@ -407,15 +412,53 @@ export default function CallSubscriptions() {
         </CardContent>
       </Card>
 
+      {/* Tabs - Responsive */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 bg-white/80 backdrop-blur-sm">
+        {/* Mobile Tab List - Scrollable */}
+        <div className="block sm:hidden mb-4">
+          <div className="flex overflow-x-auto space-x-1 pb-2">
+            <Button
+              variant={activeTab === "subscriptions" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveTab("subscriptions")}
+              className="whitespace-nowrap"
+            >
+              <CreditCard className="h-4 w-4 mr-1" />
+              Subscriptions ({callSubscriptions.filter(s => s.payment_status === 'pending').length})
+            </Button>
+            <Button
+              variant={activeTab === "distributions" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveTab("distributions")}
+              className="whitespace-nowrap"
+            >
+              <Users className="h-4 w-4 mr-1" />
+              Credits
+            </Button>
+            <Button
+              variant={activeTab === "analytics" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveTab("analytics")}
+              className="whitespace-nowrap"
+            >
+              <TrendingUp className="h-4 w-4 mr-1" />
+              Analytics
+            </Button>
+          </div>
+        </div>
+
+        {/* Desktop Tab List */}
+        <TabsList className="hidden sm:grid w-full grid-cols-3 bg-white/80 backdrop-blur-sm mb-6">
           <TabsTrigger value="subscriptions" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
-            Call Subscriptions ({callSubscriptions.filter(s => s.payment_status === 'pending').length})
+            <span className="hidden lg:inline">Call Subscriptions</span>
+            <span className="lg:hidden">Subscriptions</span>
+            ({callSubscriptions.filter(s => s.payment_status === 'pending').length})
           </TabsTrigger>
           <TabsTrigger value="distributions" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
-            Credit Distribution
+            <span className="hidden lg:inline">Credit Distribution</span>
+            <span className="lg:hidden">Credits</span>
           </TabsTrigger>
           <TabsTrigger value="analytics" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
@@ -423,167 +466,296 @@ export default function CallSubscriptions() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="subscriptions" className="space-y-6">
+        {/* Subscriptions Tab */}
+        <TabsContent value="subscriptions" className="space-y-4 sm:space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Payment Verification</CardTitle>
-              <CardDescription>Review and verify call subscription payments</CardDescription>
-              <div className="flex gap-4 mt-4">
+            <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
+              <CardTitle className="text-base sm:text-lg">Payment Verification</CardTitle>
+              <CardDescription className="text-sm">Review and verify call subscription payments</CardDescription>
+              
+              {/* Filters - Responsive */}
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-4">
                 <Input
                   placeholder="Search by name, email, or transaction ID..."
                   value={filters.search}
                   onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                  className="max-w-sm"
+                  className="w-full sm:max-w-sm"
                 />
-                <Select
-                  value={filters.paymentStatus}
-                  onValueChange={(value) => setFilters(prev => ({ ...prev, paymentStatus: value }))}
-                >
-                  <SelectTrigger className="max-w-sm">
-                    <SelectValue placeholder="Payment Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Payments</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="verified">Verified</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={filters.subscriptionStatus}
-                  onValueChange={(value) => setFilters(prev => ({ ...prev, subscriptionStatus: value }))}
-                >
-                  <SelectTrigger className="max-w-sm">
-                    <SelectValue placeholder="Subscription Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Subscriptions</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="expired">Expired</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Select
+                    value={filters.paymentStatus}
+                    onValueChange={(value) => setFilters(prev => ({ ...prev, paymentStatus: value }))}
+                  >
+                    <SelectTrigger className="w-full sm:max-w-[140px]">
+                      <SelectValue placeholder="Payment Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Payments</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="verified">Verified</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={filters.subscriptionStatus}
+                    onValueChange={(value) => setFilters(prev => ({ ...prev, subscriptionStatus: value }))}
+                  >
+                    <SelectTrigger className="w-full sm:max-w-[140px]">
+                      <SelectValue placeholder="Subscription Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Subscriptions</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="expired">Expired</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 sm:px-6 pb-4 sm:pb-6">
               {loadingSubscriptions ? (
                 <div className="flex items-center justify-center py-8">
                   <RefreshCw className="h-6 w-6 animate-spin mr-2" />
                   Loading subscriptions...
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {filteredSubscriptions.map((subscription) => (
                     <div
                       key={subscription.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-shadow bg-white/50"
+                      className="border rounded-lg hover:shadow-md transition-shadow bg-white/50"
                     >
-                      <div className="flex items-center gap-4">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={subscription.user_photo || "/placeholder.svg"} />
-                          <AvatarFallback>{subscription.user_name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold">{subscription.user_name}</h3>
-                            <Badge
-                              variant={
-                                subscription.payment_status === "verified"
-                                  ? "default"
-                                  : subscription.payment_status === "rejected"
-                                    ? "destructive"
-                                    : "secondary"
-                              }
-                            >
-                              {subscription.payment_status}
-                            </Badge>
-                            {subscription.is_active && new Date(subscription.expires_at) > new Date() && (
-                              <Badge variant="outline" className="border-green-200 text-green-700 bg-green-50">
-                                Active
-                              </Badge>
+                      {/* Mobile Layout */}
+                      <div className="block sm:hidden p-3">
+                        <div className="flex items-start gap-3 mb-3">
+                          <Avatar className="h-10 w-10 flex-shrink-0">
+                            <AvatarImage src={subscription.user_photo || "/placeholder.svg"} />
+                            <AvatarFallback className="text-xs">{subscription.user_name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between mb-1">
+                              <h3 className="font-semibold text-sm truncate">{subscription.user_name}</h3>
+                              <div className="flex flex-col gap-1 ml-2">
+                                <Badge
+                                  variant={
+                                    subscription.payment_status === "verified"
+                                      ? "default"
+                                      : subscription.payment_status === "rejected"
+                                        ? "destructive"
+                                        : "secondary"
+                                  }
+                                  className="text-xs"
+                                >
+                                  {subscription.payment_status}
+                                </Badge>
+                                {subscription.is_active && new Date(subscription.expires_at) > new Date() && (
+                                  <Badge variant="outline" className="border-green-200 text-green-700 bg-green-50 text-xs">
+                                    Active
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-600 mb-2 truncate">{subscription.user_email}</p>
+                            <div className="grid grid-cols-2 gap-1 text-xs text-gray-500 mb-2">
+                              <span>Plan: {subscription.plan_name}</span>
+                              <span>₹{subscription.amount_paid}</span>
+                              <span>Credits: {subscription.credits_remaining}/{subscription.credits_purchased}</span>
+                              <span>Calls: {subscription.total_calls_made}</span>
+                            </div>
+                            {subscription.expires_at && (
+                              <p className="text-xs text-gray-500 mb-2">
+                                Expires: {formatDate(subscription.expires_at)}
+                              </p>
+                            )}
+                            {subscription.admin_notes && (
+                              <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded mb-2">
+                                Admin Notes: {subscription.admin_notes}
+                              </p>
                             )}
                           </div>
-                          <p className="text-sm text-gray-600">{subscription.user_email}</p>
-                          <div className="flex items-center gap-4 text-xs text-gray-500">
-                            <span>Plan: {subscription.plan_name}</span>
-                            <span>₹{subscription.amount_paid}</span>
-                            <span>Credits: {subscription.credits_remaining}/{subscription.credits_purchased}</span>
-                            <span>Calls: {subscription.total_calls_made}</span>
-                            <span>Duration: {formatDuration(subscription.total_call_duration)}</span>
-                          </div>
-                          {subscription.expires_at && (
-                            <p className="text-xs text-gray-500">
-                              Expires: {formatDate(subscription.expires_at)}
-                            </p>
+                        </div>
+                        
+                        {/* Mobile Actions */}
+                        <div className="flex flex-wrap gap-2">
+                          {subscription.payment_screenshot && (
+                            <Button variant="outline" size="sm" asChild className="flex-1 text-xs">
+                              <a href={subscription.payment_screenshot} target="_blank" rel="noopener noreferrer">
+                                <Eye className="h-3 w-3 mr-1" />
+                                Screenshot
+                              </a>
+                            </Button>
                           )}
-                          {subscription.admin_notes && (
-                            <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
-                              Admin Notes: {subscription.admin_notes}
-                            </p>
+                          {subscription.payment_status === "pending" && (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  setVerifyDialog({
+                                    open: true,
+                                    subscription,
+                                    action: "verify",
+                                    adminNotes: "",
+                                  })
+                                }
+                                className="flex-1 text-xs"
+                              >
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Verify
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() =>
+                                  setVerifyDialog({
+                                    open: true,
+                                    subscription,
+                                    action: "reject",
+                                    adminNotes: "",
+                                  })
+                                }
+                                className="flex-1 text-xs"
+                              >
+                                <XCircle className="h-3 w-3 mr-1" />
+                                Reject
+                              </Button>
+                            </>
+                          )}
+                          {subscription.payment_status === "verified" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setCreditDialog({
+                                  open: true,
+                                  userId: subscription.user_id,
+                                  userName: subscription.user_name,
+                                  currentCredits: subscription.credits_remaining,
+                                  newCredits: "",
+                                  action: 'add',
+                                  reason: ""
+                                })
+                              }
+                              className="w-full text-xs"
+                            >
+                              <Edit className="h-3 w-3 mr-1" />
+                              Adjust Credits
+                            </Button>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {subscription.payment_screenshot && (
-                          <Button variant="outline" size="sm" asChild>
-                            <a href={subscription.payment_screenshot} target="_blank" rel="noopener noreferrer">
-                              <Eye className="h-4 w-4 mr-1" />
-                              Screenshot
-                            </a>
-                          </Button>
-                        )}
-                        {subscription.payment_status === "pending" && (
-                          <>
+
+                      {/* Desktop Layout */}
+                      <div className="hidden sm:flex items-center justify-between p-4">
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                          <Avatar className="h-12 w-12 flex-shrink-0">
+                            <AvatarImage src={subscription.user_photo || "/placeholder.svg"} />
+                            <AvatarFallback>{subscription.user_name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold truncate">{subscription.user_name}</h3>
+                              <Badge
+                                variant={
+                                  subscription.payment_status === "verified"
+                                    ? "default"
+                                    : subscription.payment_status === "rejected"
+                                      ? "destructive"
+                                      : "secondary"
+                                }
+                              >
+                                {subscription.payment_status}
+                              </Badge>
+                              {subscription.is_active && new Date(subscription.expires_at) > new Date() && (
+                                <Badge variant="outline" className="border-green-200 text-green-700 bg-green-50">
+                                  Active
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600 truncate mb-1">{subscription.user_email}</p>
+                            <div className="flex items-center gap-4 text-xs text-gray-500">
+                              <span>Plan: {subscription.plan_name}</span>
+                              <span>₹{subscription.amount_paid}</span>
+                              <span>Credits: {subscription.credits_remaining}/{subscription.credits_purchased}</span>
+                              <span className="hidden lg:inline">Calls: {subscription.total_calls_made}</span>
+                              <span className="hidden xl:inline">Duration: {formatDuration(subscription.total_call_duration)}</span>
+                            </div>
+                            {subscription.expires_at && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                Expires: {formatDate(subscription.expires_at)}
+                              </p>
+                            )}
+                            {subscription.admin_notes && (
+                              <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded mt-2">
+                                Admin Notes: {subscription.admin_notes}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Desktop Actions */}
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {subscription.payment_screenshot && (
+                            <Button variant="outline" size="sm" asChild>
+                              <a href={subscription.payment_screenshot} target="_blank" rel="noopener noreferrer">
+                                <Eye className="h-4 w-4 mr-1" />
+                                <span className="hidden lg:inline">Screenshot</span>
+                              </a>
+                            </Button>
+                          )}
+                          {subscription.payment_status === "pending" && (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  setVerifyDialog({
+                                    open: true,
+                                    subscription,
+                                    action: "verify",
+                                    adminNotes: "",
+                                  })
+                                }
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                <span className="hidden lg:inline">Verify</span>
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() =>
+                                  setVerifyDialog({
+                                    open: true,
+                                    subscription,
+                                    action: "reject",
+                                    adminNotes: "",
+                                  })
+                                }
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                <span className="hidden lg:inline">Reject</span>
+                              </Button>
+                            </>
+                          )}
+                          {subscription.payment_status === "verified" && (
                             <Button
+                              variant="outline"
                               size="sm"
                               onClick={() =>
-                                setVerifyDialog({
+                                setCreditDialog({
                                   open: true,
-                                  subscription,
-                                  action: "verify",
-                                  adminNotes: "",
+                                  userId: subscription.user_id,
+                                  userName: subscription.user_name,
+                                  currentCredits: subscription.credits_remaining,
+                                  newCredits: "",
+                                  action: 'add',
+                                  reason: ""
                                 })
                               }
                             >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Verify
+                              <Edit className="h-4 w-4 mr-1" />
+                              <span className="hidden lg:inline">Adjust Credits</span>
                             </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() =>
-                                setVerifyDialog({
-                                  open: true,
-                                  subscription,
-                                  action: "reject",
-                                  adminNotes: "",
-                                })
-                              }
-                            >
-                              <XCircle className="h-4 w-4 mr-1" />
-                              Reject
-                            </Button>
-                          </>
-                        )}
-                        {subscription.payment_status === "verified" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              setCreditDialog({
-                                open: true,
-                                userId: subscription.user_id,
-                                userName: subscription.user_name,
-                                currentCredits: subscription.credits_remaining,
-                                newCredits: "",
-                                action: 'add',
-                                reason: ""
-                              })
-                            }
-                          >
-                            <Edit className="h-4 w-4 mr-1" />
-                            Adjust Credits
-                          </Button>
-                        )}
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -591,7 +763,7 @@ export default function CallSubscriptions() {
                     <div className="text-center py-8 text-gray-500">
                       <PhoneCall className="h-16 w-16 mx-auto mb-4 text-gray-300" />
                       <h3 className="text-lg font-medium mb-2">No subscriptions found</h3>
-                      <p>No call subscriptions match your current filters</p>
+                      <p className="text-sm">No call subscriptions match your current filters</p>
                     </div>
                   )}
                 </div>
@@ -600,109 +772,15 @@ export default function CallSubscriptions() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="distributions" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Manual Credit Distribution</CardTitle>
-              <CardDescription>Manually manage and distribute call credits to users</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loadingDistributions ? (
-                <div className="flex items-center justify-center py-8">
-                  <RefreshCw className="h-6 w-6 animate-spin mr-2" />
-                  Loading distributions...
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {creditDistributions.map((distribution, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-shadow bg-white/50"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold">{distribution.user_name}</h3>
-                          <Badge
-                            variant={
-                              distribution.status === "active"
-                                ? "default"
-                                : distribution.status === "expired"
-                                  ? "secondary"
-                                  : "destructive"
-                            }
-                          >
-                            {distribution.status}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-gray-600">
-                          <span>Allocated: {distribution.allocated_credits}</span>
-                          <span>Used: {distribution.used_credits}</span>
-                          <span>Remaining: {distribution.remaining_credits}</span>
-                          {distribution.last_call && (
-                            <span>Last Call: {formatDate(distribution.last_call)}</span>
-                          )}
-                        </div>
-                        <Progress 
-                          value={(distribution.used_credits / distribution.allocated_credits) * 100} 
-                          className="w-64"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            setCreditDialog({
-                              open: true,
-                              userId: distribution.user_id,
-                              userName: distribution.user_name,
-                              currentCredits: distribution.remaining_credits,
-                              newCredits: "",
-                              action: 'add',
-                              reason: ""
-                            })
-                          }
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Add Credits
-                        </Button>
-                        {distribution.remaining_credits > 0 && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              setCreditDialog({
-                                open: true,
-                                userId: distribution.user_id,
-                                userName: distribution.user_name,
-                                currentCredits: distribution.remaining_credits,
-                                newCredits: "",
-                                action: 'remove',
-                                reason: ""
-                              })
-                            }
-                          >
-                            <Minus className="h-4 w-4 mr-1" />
-                            Remove
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Analytics Tab - Responsive Grid */}
+        <TabsContent value="analytics" className="space-y-4 sm:space-y-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+              <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                <CardTitle className="text-xs sm:text-sm font-medium">Total Revenue</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
+              <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+                <div className="text-lg sm:text-2xl font-bold">
                   ₹{callSubscriptions.filter(s => s.payment_status === 'verified')
                     .reduce((sum, s) => sum + s.amount_paid, 0).toLocaleString()}
                 </div>
@@ -710,33 +788,33 @@ export default function CallSubscriptions() {
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Active Subscribers</CardTitle>
+              <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                <CardTitle className="text-xs sm:text-sm font-medium">Active Subscribers</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
+              <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+                <div className="text-lg sm:text-2xl font-bold">
                   {callSubscriptions.filter(s => s.is_active && new Date(s.expires_at) > new Date()).length}
                 </div>
                 <p className="text-xs text-gray-500">Currently active</p>
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total Calls Made</CardTitle>
+              <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                <CardTitle className="text-xs sm:text-sm font-medium">Total Calls Made</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
+              <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+                <div className="text-lg sm:text-2xl font-bold">
                   {callSubscriptions.reduce((sum, s) => sum + s.total_calls_made, 0)}
                 </div>
                 <p className="text-xs text-gray-500">All time</p>
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Call Duration</CardTitle>
+              <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                <CardTitle className="text-xs sm:text-sm font-medium">Call Duration</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
+              <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+                <div className="text-lg sm:text-2xl font-bold">
                   {formatDuration(callSubscriptions.reduce((sum, s) => sum + s.total_call_duration, 0))}
                 </div>
                 <p className="text-xs text-gray-500">Total duration</p>

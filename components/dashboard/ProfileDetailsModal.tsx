@@ -34,77 +34,76 @@ export default function ProfileDetailsModal({
 }: ProfileDetailsModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl w-full p-4 md:p-5 rounded-xl">
+      <DialogContent className="max-w-xs sm:max-w-2xl lg:max-w-3xl w-full p-3 sm:p-4 lg:p-5 rounded-xl mx-4 sm:mx-auto max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="sr-only">Profile Details</DialogTitle>
         </DialogHeader>
 
         {selectedMatch && (
-          <div className="space-y-4">
-            {/* Top Section */}
-            <div className="relative bg-blue-500 rounded-lg p-4 text-white">
-              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+          <div className="space-y-3 sm:space-y-4">
+            {/* Top Section - responsive header */}
+            <div className="relative bg-blue-500 rounded-lg p-3 sm:p-4 text-white">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 {/* Avatar + Info */}
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-14 w-14 border-2 border-white shadow-md">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <Avatar className="h-12 w-12 sm:h-14 sm:w-14 border-2 border-white shadow-md flex-shrink-0">
                     <AvatarImage src={selectedMatch.profile_photo || "/placeholder.svg"} />
-                    <AvatarFallback className="text-lg font-bold text-blue-500 bg-white">
+                    <AvatarFallback className="text-sm sm:text-lg font-bold text-blue-500 bg-white">
                       {selectedMatch.name.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
-                    <h2 className="text-lg font-bold">{selectedMatch.name}</h2>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-base sm:text-lg font-bold truncate">{selectedMatch.name}</h2>
                     <p className="text-xs text-blue-100">
                       {selectedMatch.age} yrs • {selectedMatch.city}, {selectedMatch.state}
                     </p>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      <Badge variant="outline" className="text-[10px] border-white/30 text-white bg-white/20">
+                      <Badge variant="outline" className="text-[9px] sm:text-[10px] border-white/30 text-white bg-white/20 px-1">
                         {selectedMatch.religion}
                       </Badge>
-                      <Badge variant="outline" className="text-[10px] border-white/30 text-white bg-white/20">
+                      <Badge variant="outline" className="text-[9px] sm:text-[10px] border-white/30 text-white bg-white/20 px-1">
                         {selectedMatch.marital_status}
                       </Badge>
                     </div>
                   </div>
                 </div>
-
-                {/* Actions */}
-                <div className="flex flex-wrap gap-2">
+                {/* Actions - responsive button layout */}
+                <div className="flex flex-wrap gap-1.5 sm:gap-2 justify-end">
                   <Button
                     onClick={() => onInitiateCall(selectedMatch.id, selectedMatch.name)}
-                    className={`text-xs px-3 ${activePlans.call_plan?.isActive
-                      ? "bg-green-600 hover:bg-green-700 text-white"
-                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    className={`text-[10px] sm:text-xs px-2 sm:px-3 h-6 sm:h-7 ${activePlans.call_plan?.isActive
+                        ? "bg-green-600 hover:bg-green-700 text-white"
+                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
                       }`}
                     disabled={!activePlans.call_plan?.isActive || makingCall}
                   >
-                    <PhoneCall className="h-3 w-3 mr-1" />
-                    {activePlans.call_plan?.isActive ? "Call" : "Locked"}
+                    <PhoneCall className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
+                    {activePlans.call_plan?.isActive ? "Call" : "Lock"}
                   </Button>
-                  <Button className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3">
-                    <MessageCircle className="h-3 w-3 mr-1" />
+                  <Button className="text-[10px] sm:text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 sm:px-3 h-6 sm:h-7">
+                    <MessageCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
                     Chat
                   </Button>
                   <Button
                     variant="outline"
-                    className="text-xs border-white/30 text-white bg-white/20 hover:bg-white/30 px-3"
+                    className="text-[10px] sm:text-xs border-white/30 text-white bg-white/20 hover:bg-white/30 px-2 sm:px-3 h-6 sm:h-7"
                   >
-                    <Heart className="h-3 w-3 mr-1" />
-                    Shortlist
+                    <Heart className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
+                    <span className="hidden sm:inline">Shortlist</span>
                   </Button>
                 </div>
               </div>
             </div>
 
             {/* Details Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {/* Personal */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+              {/* Personal Card */}
               <Card className="border-0 shadow-sm bg-blue-50">
-                <CardContent className="p-3">
-                  <h4 className="text-xs font-semibold text-blue-700 mb-1 flex items-center">
-                    <User className="h-3 w-3 mr-1" /> Personal
+                <CardContent className="p-2 sm:p-3">
+                  <h4 className="text-[10px] sm:text-xs font-semibold text-blue-700 mb-1 flex items-center">
+                    <User className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" /> Personal
                   </h4>
-                  <div className="space-y-1">
+                  <div className="space-y-0.5 sm:space-y-1">
                     <DetailRow label="Height" value={selectedMatch.height} />
                     <DetailRow label="Weight" value={selectedMatch.weight} />
                     <DetailRow label="Mother Tongue" value={selectedMatch.mother_tongue} />
@@ -112,41 +111,44 @@ export default function ProfileDetailsModal({
                   </div>
                 </CardContent>
               </Card>
-
               {/* Professional */}
               <Card className="border-0 shadow-sm bg-green-50">
-                <CardContent className="p-3">
-                  <h4 className="text-xs font-semibold text-green-700 mb-1 flex items-center">
-                    <Briefcase className="h-3 w-3 mr-1" /> Professional
+                <CardContent className="p-2 sm:p-3">
+                  <h4 className="text-[10px] sm:text-xs font-semibold text-green-700 mb-1 flex items-center">
+                    <Briefcase className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" /> Professional
                   </h4>
-                  <DetailRow label="Education" value={selectedMatch.education} />
-                  <DetailRow label="Occupation" value={selectedMatch.occupation} />
-                  <DetailRow label="Income" value={selectedMatch.income} />
+                  <div className="space-y-0.5 sm:space-y-1">
+                    <DetailRow label="Education" value={selectedMatch.education} />
+                    <DetailRow label="Occupation" value={selectedMatch.occupation} />
+                    <DetailRow label="Income" value={selectedMatch.income} />
+                  </div>
                 </CardContent>
               </Card>
 
               {/* Family */}
               <Card className="border-0 shadow-sm bg-purple-50">
-                <CardContent className="p-3">
-                  <h4 className="text-xs font-semibold text-purple-700 mb-1 flex items-center">
-                    <Home className="h-3 w-3 mr-1" /> Family
+                <CardContent className="p-2 sm:p-3">
+                  <h4 className="text-[10px] sm:text-xs font-semibold text-purple-700 mb-1 flex items-center">
+                    <Home className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" /> Family
                   </h4>
-                  <DetailRow label="Family Type" value={selectedMatch.family_type} />
-                  <DetailRow label="Family Status" value={selectedMatch.family_status} />
+                  <div className="space-y-0.5 sm:space-y-1">
+                    <DetailRow label="Family Type" value={selectedMatch.family_type} />
+                    <DetailRow label="Family Status" value={selectedMatch.family_status} />
+                  </div>
                 </CardContent>
               </Card>
 
               {/* About */}
-              <Card className="border-0 shadow-sm bg-yellow-50 md:col-span-2">
-                <CardContent className="p-3">
-                  <h4 className="text-xs font-semibold text-yellow-700 mb-1 flex items-center">
-                    <Info className="h-3 w-3 mr-1" /> About
+              <Card className="border-0 shadow-sm bg-yellow-50 sm:col-span-2">
+                <CardContent className="p-2 sm:p-3">
+                  <h4 className="text-[10px] sm:text-xs font-semibold text-yellow-700 mb-1 flex items-center">
+                    <Info className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" /> About
                   </h4>
-                  <p className="text-xs text-gray-600 leading-snug">
+                  <p className="text-[10px] sm:text-xs text-gray-600 leading-snug">
                     <span className="font-medium">About Me: </span>
                     {selectedMatch.about_me || "Not provided"}
                   </p>
-                  <p className="text-xs text-gray-600 leading-snug mt-1">
+                  <p className="text-[10px] sm:text-xs text-gray-600 leading-snug mt-1">
                     <span className="font-medium">Partner Preferences: </span>
                     {selectedMatch.partner_preferences || "Not provided"}
                   </p>
@@ -163,8 +165,8 @@ export default function ProfileDetailsModal({
 function DetailRow({ label, value }: { label: string; value?: string }) {
   return (
     <div className="flex justify-between">
-      <span className="text-[11px] text-gray-500">{label}:</span>
-      <span className="text-xs font-medium text-gray-800">{value || "N/A"}</span>
+      <span className="text-[9px] sm:text-[11px] text-gray-500">{label}:</span>
+      <span className="text-[10px] sm:text-xs font-medium text-gray-800 truncate ml-2">{value || "N/A"}</span>
     </div>
-  )
+  );
 }

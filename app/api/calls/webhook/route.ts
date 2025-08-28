@@ -11,15 +11,13 @@ const dbConfig = {
 }
 
 function calculateCallCost(durationSeconds: number, costPerMinute: number = 1): number {
-  const minutes = Math.ceil(durationSeconds / 60) // Round up to nearest minute
+  const minutes = Math.ceil(durationSeconds / 60)
   return minutes * costPerMinute
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
-    // Exotel webhook payload contains call details
     const {
       CallSid,
       CallStatus,

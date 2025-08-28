@@ -10,7 +10,6 @@ const dbConfig = {
   port: Number.parseInt(process.env.DB_PORT || "3306"),
 };
 
-// POST method (unchanged)
 export async function POST(request: NextRequest) {
   const connection = await mysql.createConnection(dbConfig);
   try {

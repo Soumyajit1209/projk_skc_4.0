@@ -1,4 +1,3 @@
-// app/api/plans/route.ts (Create this file)
 import { type NextRequest, NextResponse } from "next/server"
 import mysql from "mysql2/promise"
 
@@ -21,7 +20,12 @@ export async function GET(request: NextRequest) {
 
     const plans = (planRows as any[]).map(plan => ({
       ...plan,
-      features: plan.features ? plan.features.split(',').map((f: string) => f.trim()) : []
+      features: plan.features
+        ? plan.features
+            .split(',')
+            .map((f: string) => f.trim())
+            .filter((f: string) => f !== '')
+        : null,
     }))
 
     await connection.end()
