@@ -71,4 +71,5 @@ export interface CurrentMatch {
   state: string
   city: string
   matched_at: string
+  profile_photo: string
 }
