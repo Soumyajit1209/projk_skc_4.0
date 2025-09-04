@@ -1,3 +1,4 @@
+// app/api/calls/webhook/route.ts
 import { type NextRequest, NextResponse } from "next/server"
 import mysql from "mysql2/promise"
 import jwt from "jsonwebtoken"
@@ -10,14 +11,13 @@ const dbConfig = {
   port: Number.parseInt(process.env.DB_PORT || "3306"),
 }
 
-function calculateCallCost(durationSeconds: number, costPerMinute: number = 1): number {
-  const minutes = Math.ceil(durationSeconds / 60)
-  return minutes * costPerMinute
-}
-
 export async function POST(request: NextRequest) {
+  let connection: mysql.Connection | null = null;
+  
   try {
     const body = await request.json()
+    console.log('Exotel Webhook Received:', body)
+    
     const {
       CallSid,
       CallStatus,
@@ -27,10 +27,11 @@ export async function POST(request: NextRequest) {
     } = body
 
     if (!CallSid) {
+      console.error('Missing CallSid in webhook')
       return NextResponse.json({ error: "CallSid is required" }, { status: 400 })
     }
 
-    const connection = await mysql.createConnection(dbConfig)
+    connection = await mysql.createConnection(dbConfig)
 
     // Find the call session
     const [sessionRows] = await connection.execute(
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
     const session = (sessionRows as any[])[0]
 
     if (!session) {
-      await connection.end()
+      console.error('Call session not found for CallSid:', CallSid)
       return NextResponse.json({ error: "Call session not found" }, { status: 404 })
     }
 
@@ -50,6 +51,11 @@ export async function POST(request: NextRequest) {
     let updateParams: any[] = []
 
     switch (CallStatus) {
+      case 'ringing':
+        updateQuery = "UPDATE call_sessions SET status = 'ringing' WHERE id = ?"
+        updateParams = [session.id]
+        break
+
       case 'in-progress':
         updateQuery = "UPDATE call_sessions SET status = 'in_progress', started_at = NOW() WHERE id = ?"
         updateParams = [session.id]
@@ -59,55 +65,38 @@ export async function POST(request: NextRequest) {
       case 'busy':
       case 'no-answer':
       case 'failed':
+      case 'canceled':
         const duration = parseInt(CallDuration) || 0
-        const cost = calculateCallCost(duration, session.cost_per_minute)
         
         updateQuery = `
           UPDATE call_sessions 
-          SET status = ?, duration = ?, cost = ?, ended_at = NOW(), recording_url = ?
+          SET status = ?, duration = ?, ended_at = NOW(), recording_url = ?
           WHERE id = ?
         `
-        updateParams = [CallStatus, duration, cost, RecordingUrl || null, session.id]
+        updateParams = [CallStatus, duration, RecordingUrl || null, session.id]
 
-        // If call was completed successfully, deduct credits and create call log
+        // Create call logs for both users (no cost tracking)
         if (CallStatus === 'completed' && duration > 0) {
-          // Deduct credits from both users (they share the cost)
-          const creditsToDeduct = Math.ceil(cost / 2) // Split cost between users
-
-          // Deduct from caller's credits
-          await connection.execute(`
-            UPDATE user_call_credits 
-            SET credits_remaining = GREATEST(0, credits_remaining - ?)
-            WHERE user_id = ? AND credits_remaining > 0 AND expires_at > NOW()
-            ORDER BY expires_at ASC
-            LIMIT 1
-          `, [creditsToDeduct, session.caller_id])
-
-          // Deduct from receiver's credits (if they have any)
-          await connection.execute(`
-            UPDATE user_call_credits 
-            SET credits_remaining = GREATEST(0, credits_remaining - ?)
-            WHERE user_id = ? AND credits_remaining > 0 AND expires_at > NOW()
-            ORDER BY expires_at ASC
-            LIMIT 1
-          `, [creditsToDeduct, session.receiver_id])
-
-          // Create call logs for both users
+          // Create call log for caller
           await connection.execute(`
             INSERT INTO call_logs (
-              user_id, other_user_id, call_session_id, call_type, duration, cost, created_at
-            ) VALUES (?, ?, ?, 'outgoing', ?, ?, NOW())
-          `, [session.caller_id, session.receiver_id, session.id, duration, creditsToDeduct])
+              user_id, other_user_id, call_session_id, call_type, duration, created_at
+            ) VALUES (?, ?, ?, 'outgoing', ?, NOW())
+          `, [session.caller_id, session.receiver_id, session.id, duration])
 
+          // Create call log for receiver
           await connection.execute(`
             INSERT INTO call_logs (
-              user_id, other_user_id, call_session_id, call_type, duration, cost, created_at
-            ) VALUES (?, ?, ?, 'incoming', ?, ?, NOW())
-          `, [session.receiver_id, session.caller_id, session.id, duration, creditsToDeduct])
+              user_id, other_user_id, call_session_id, call_type, duration, created_at
+            ) VALUES (?, ?, ?, 'incoming', ?, NOW())
+          `, [session.receiver_id, session.caller_id, session.id, duration])
+          
+          // Credit deduction happens automatically via database trigger
         }
         break
 
       default:
+        console.log('Unknown call status:', CallStatus)
         updateQuery = "UPDATE call_sessions SET status = ? WHERE id = ?"
         updateParams = [CallStatus, session.id]
     }
@@ -115,9 +104,8 @@ export async function POST(request: NextRequest) {
     // Execute the update
     if (updateQuery) {
       await connection.execute(updateQuery, updateParams)
+      console.log(`Updated call session ${session.id} with status: ${CallStatus}`)
     }
-
-    await connection.end()
 
     return NextResponse.json({ 
       success: true, 
@@ -126,30 +114,41 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error("Webhook processing error:", error)
-    return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 })
+    return NextResponse.json({ 
+      error: "Webhook processing failed",
+      details: (error as Error).message 
+    }, { status: 500 })
+  } finally {
+    if (connection) {
+      await connection.end()
+    }
   }
 }
 
 // GET endpoint to retrieve call logs for a user
 export async function GET(request: NextRequest) {
+  let connection: mysql.Connection | null = null;
+  
   try {
     const authHeader = request.headers.get("authorization")
     const token = authHeader?.replace("Bearer ", "")
 
     if (!token) {
-      return NextResponse.json({ error: "No token provided" }, { status: 401 })
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
-    const connection = await mysql.createConnection(dbConfig)
+    connection = await mysql.createConnection(dbConfig)
 
     const [logRows] = await connection.execute(`
       SELECT 
-        cl.*,
+        cl.id,
+        cl.call_type,
+        cl.duration,
+        cl.created_at,
         other_user.name as other_user_name,
         other_profile.profile_photo as other_user_photo,
-        cs.caller_virtual_number,
-        cs.receiver_virtual_number
+        cs.status as call_status
       FROM call_logs cl
       JOIN users other_user ON cl.other_user_id = other_user.id
       JOIN user_profiles other_profile ON cl.other_user_id = other_profile.user_id
@@ -161,25 +160,24 @@ export async function GET(request: NextRequest) {
 
     const logs = (logRows as any[]).map(log => ({
       id: log.id,
-      caller_name: log.call_type === 'outgoing' ? 'You' : log.other_user_name,
-      receiver_name: log.call_type === 'outgoing' ? log.other_user_name : 'You',
       other_user_name: log.other_user_name,
       other_user_photo: log.other_user_photo,
       duration: log.duration,
-      cost: log.cost,
       call_type: log.call_type,
-      masked_number: log.call_type === 'outgoing' ? log.caller_virtual_number : log.receiver_virtual_number,
+      call_status: log.call_status,
       created_at: log.created_at
     }))
 
-    await connection.end()
-
-    return NextResponse.json({
-      logs: logs
-    })
+    return NextResponse.json({ success: true, logs })
 
   } catch (error) {
     console.error("Call logs error:", error)
-    return NextResponse.json({ error: "Failed to fetch call logs" }, { status: 500 })
+    return NextResponse.json({ 
+      error: "Failed to fetch call logs" 
+    }, { status: 500 })
+  } finally {
+    if (connection) {
+      await connection.end()
+    }
   }
 }

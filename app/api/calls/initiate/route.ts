@@ -1,3 +1,4 @@
+// app/api/calls/initiate/route.ts
 import { type NextRequest, NextResponse } from "next/server"
 import mysql from "mysql2/promise"
 import jwt from "jsonwebtoken"
@@ -12,272 +13,231 @@ const dbConfig = {
 
 // Exotel configuration
 const EXOTEL_SID = process.env.EXOTEL_SID
-const EXOTEL_TOKEN = process.env.EXOTEL_TOKEN
-const EXOTEL_APP_ID = process.env.EXOTEL_APP_ID
-const EXOTEL_CALLER_ID = process.env.EXOTEL_CALLER_ID // Your verified Exotel number
+const EXOTEL_API_KEY = process.env.EXOTEL_API_KEY
+const EXOTEL_API_TOKEN = process.env.EXOTEL_API_TOKEN
+const EXOTEL_SUBDOMAIN = process.env.EXOTEL_SUBDOMAIN
+const EXOTEL_VIRTUAL_NUMBER = process.env.EXOTEL_VIRTUAL_NUMBER
 
-async function createMaskedCall(callerNumber: string, receiverNumber: string, userId: number, targetUserId: number) {
+async function initiateExotelCall(
+  callerNumber: string,
+  receiverNumber: string,
+  userId: number,
+  targetUserId: number
+) {
   try {
-    const url = `https://api.exotel.com/v1/Accounts/${EXOTEL_SID}/Calls/connect`
-    
+    const url = `https://${process.env.EXOTEL_SUBDOMAIN}/v1/Accounts/${process.env.EXOTEL_SID}/Calls/connect.json`
+
     const formData = new URLSearchParams()
     formData.append('From', callerNumber)
     formData.append('To', receiverNumber)
-    formData.append('CallerId', EXOTEL_CALLER_ID)
+    formData.append('CallerId', process.env.EXOTEL_VIRTUAL_NUMBER ?? "")
     formData.append('CallType', 'trans')
-    formData.append('TimeLimit', '3600') // 1 hour max
-    formData.append('TimeOut', '30') // 30 seconds timeout
+    formData.append('TimeLimit', '3600')
+    formData.append('TimeOut', '30')
     formData.append('StatusCallback', `${process.env.APP_URL}/api/calls/webhook`)
-    formData.append('StatusCallbackEvents', 'terminal')
     formData.append('Record', 'true')
-    formData.append('CustomField', JSON.stringify({ userId, targetUserId }))
+    formData.append('CustomField', JSON.stringify({
+      userId,
+      targetUserId,
+      timestamp: Date.now()
+    }))
+
+    const authHeader =
+      'Basic ' +
+      Buffer.from(
+        `${process.env.EXOTEL_API_KEY}:${process.env.EXOTEL_API_TOKEN}`
+      ).toString('base64')
 
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Basic ${Buffer.from(`${EXOTEL_SID}:${EXOTEL_TOKEN}`).toString('base64')}`,
+        'Authorization': authHeader,
         'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
       },
-      body: formData
+      body: formData,
     })
 
     const data = await response.json()
-    
-    if (response.ok && data.Call) {
+
+    if (response.ok && data.Call && data.Call.Sid) {
       return {
         success: true,
         callSid: data.Call.Sid,
         status: data.Call.Status,
-        maskedNumber: EXOTEL_CALLER_ID
+        virtualNumber: process.env.EXOTEL_VIRTUAL_NUMBER,
       }
     } else {
-      throw new Error(data.message || 'Failed to initiate call')
+      console.error('Exotel API Error:', data)
+      throw new Error(
+        data.RestException?.Message ||
+        data.message ||
+        'Exotel API call failed'
+      )
     }
   } catch (error) {
-    console.error('Exotel API error:', error)
+    console.error('Exotel API Error:', error)
     throw error
   }
 }
 
-// Function to generate virtual number for display
-function generateVirtualNumber(): string {
-  // Generate a virtual number format like +91-XXXX-XXXXXX
-  const areaCode = Math.floor(Math.random() * 9000) + 1000
-  const number = Math.floor(Math.random() * 900000) + 100000
-  return `+91-${areaCode}-${number}`
-}
-
 export async function POST(request: NextRequest) {
+  let connection: mysql.Connection | null = null;
+
   try {
     const authHeader = request.headers.get("authorization")
     const token = authHeader?.replace("Bearer ", "")
 
     if (!token) {
-      return NextResponse.json({ error: "No token provided" }, { status: 401 })
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
     const { targetUserId } = await request.json()
 
-    if (!targetUserId) {
-      return NextResponse.json({ error: "Target user ID is required" }, { status: 400 })
+    if (!targetUserId || isNaN(targetUserId)) {
+      return NextResponse.json({ error: "Valid target user ID is required" }, { status: 400 })
     }
 
-    const connection = await mysql.createConnection(dbConfig)
+    if (!EXOTEL_SID || !EXOTEL_API_KEY || !EXOTEL_API_TOKEN || !EXOTEL_VIRTUAL_NUMBER) {
+      console.error('Missing Exotel configuration')
+      return NextResponse.json({
+        error: "Call service not configured",
+        code: "CONFIG_ERROR"
+      }, { status: 500 })
+    }
 
-    // Check if user has active call credits
-    const [callCreditsRows] = await connection.execute(`
-      SELECT 
-        uc.*,
-        p.name as plan_name,
-        p.call_credits,
-        p.price as cost_per_call
-      FROM user_call_credits uc
-      JOIN plans p ON uc.plan_id = p.id
-      WHERE uc.user_id = ? 
-        AND uc.credits_remaining > 0
-        AND uc.expires_at > NOW()
-      ORDER BY uc.expires_at ASC
+    connection = await mysql.createConnection(dbConfig)
+    const [callerCreditsRows] = await connection.execute(`
+      SELECT id, credits_remaining, expires_at FROM user_call_credits 
+      WHERE user_id = ? 
+        AND credits_remaining > 0
+        AND expires_at > NOW()
+      ORDER BY expires_at ASC
       LIMIT 1
     `, [decoded.userId])
 
-    const callCredits = (callCreditsRows as any[])[0]
-
-    if (!callCredits) {
-      await connection.end()
-      return NextResponse.json({ 
-        error: "No active call credits. Please purchase a call plan to make calls." 
+    if ((callerCreditsRows as any[]).length === 0) {
+      return NextResponse.json({
+        error: "You don't have active call credits. Please purchase a call plan.",
+        code: "NO_CREDITS"
       }, { status: 403 })
     }
 
-    // Get caller details
-    const [callerRows] = await connection.execute(`
-      SELECT u.*, up.* FROM users u
-      JOIN user_profiles up ON u.id = up.user_id
-      WHERE u.id = ? AND u.status = 'active'
-    `, [decoded.userId])
-
-    const caller = (callerRows as any[])[0]
-
-    if (!caller) {
-      await connection.end()
-      return NextResponse.json({ error: "Caller not found" }, { status: 404 })
-    }
-
-    // Get target user details
-    const [targetRows] = await connection.execute(`
-      SELECT u.*, up.* FROM users u
-      JOIN user_profiles up ON u.id = up.user_id
-      WHERE u.id = ? AND u.status = 'active'
+    // Check if receiver has active credits  
+    const [receiverCreditsRows] = await connection.execute(`
+      SELECT id, credits_remaining FROM user_call_credits 
+      WHERE user_id = ? 
+        AND credits_remaining > 0
+        AND expires_at > NOW()
+      LIMIT 1
     `, [targetUserId])
 
-    const targetUser = (targetRows as any[])[0]
+    if ((receiverCreditsRows as any[]).length === 0) {
+      return NextResponse.json({
+        error: "The user you're trying to call doesn't have active call credits.",
+        code: "TARGET_NO_CREDITS"
+      }, { status: 403 })
+    }
 
-    if (!targetUser) {
-      await connection.end()
-      return NextResponse.json({ error: "Target user not found" }, { status: 404 })
+    // Get user phone numbers and details
+    const [usersRows] = await connection.execute(`
+      SELECT 
+        u.id, u.name, u.phone, u.status,
+        up.profile_photo
+      FROM users u
+      JOIN user_profiles up ON u.id = up.user_id
+      WHERE u.id IN (?, ?) AND u.status = 'active'
+    `, [decoded.userId, targetUserId])
+
+    const users = (usersRows as any[])
+
+    if (users.length !== 2) {
+      return NextResponse.json({ error: "One or both users not found" }, { status: 404 })
+    }
+
+    const caller = users.find(u => u.id === decoded.userId)
+    const receiver = users.find(u => u.id === targetUserId)
+
+    // Validate phone numbers
+    if (!caller.phone || !receiver.phone) {
+      return NextResponse.json({
+        error: "Phone numbers are required for both users",
+        code: "MISSING_PHONE"
+      }, { status: 400 })
     }
 
     // Check if users are matched
     const [matchRows] = await connection.execute(`
-      SELECT * FROM user_matches 
+      SELECT id FROM matches 
       WHERE (user_id = ? AND matched_user_id = ?) 
          OR (user_id = ? AND matched_user_id = ?)
+      LIMIT 1
     `, [decoded.userId, targetUserId, targetUserId, decoded.userId])
 
     if ((matchRows as any[]).length === 0) {
-      await connection.end()
-      return NextResponse.json({ 
-        error: "You can only call matched users" 
+      return NextResponse.json({
+        error: "You can only call users you've matched with",
+        code: "NOT_MATCHED"
       }, { status: 403 })
     }
 
-    // Generate virtual numbers for display
-    const callerVirtualNumber = generateVirtualNumber()
-    const receiverVirtualNumber = generateVirtualNumber()
-
     try {
-      // Initiate call through Exotel
-      const callResult = await createMaskedCall(
+      // Initiate call via Exotel
+      const exotelResult = await initiateExotelCall(
         caller.phone,
-        targetUser.phone,
+        receiver.phone,
         decoded.userId,
         targetUserId
       )
-
-      // Create call session record
-      const [callSessionResult] = await connection.execute(`
+      const [sessionResult] = await connection.execute(`
         INSERT INTO call_sessions (
           caller_id, receiver_id, exotel_call_sid, status,
           caller_virtual_number, receiver_virtual_number,
-          caller_real_number, receiver_real_number,
-          cost_per_minute, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+          caller_real_number, receiver_real_number, 
+          created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
       `, [
         decoded.userId,
         targetUserId,
-        callResult.callSid,
+        exotelResult.callSid,
         'initiated',
-        callerVirtualNumber,
-        receiverVirtualNumber,
+        EXOTEL_VIRTUAL_NUMBER,
+        EXOTEL_VIRTUAL_NUMBER,
         caller.phone,
-        targetUser.phone,
-        1 // ₹1 per minute
+        receiver.phone
       ])
 
-      const callSessionId = (callSessionResult as any).insertId
-
-      await connection.end()
+      const callSessionId = (sessionResult as any).insertId
 
       return NextResponse.json({
         success: true,
         callSessionId,
-        callerVirtualNumber,
-        receiverVirtualNumber,
-        targetName: targetUser.name,
-        status: 'connecting',
-        message: 'Call is being connected. Please wait...',
-        callUrl: `/call/${callSessionId}` // Frontend call interface
+        message: "Call initiated successfully",
+        status: "initiated",
+        callerName: caller.name,
+        receiverName: receiver.name,
+        instructions: "Exotel will call both users automatically. Please answer your phone.",
+        exotelCallSid: exotelResult.callSid
       })
 
     } catch (exotelError) {
-      await connection.end()
-      console.error('Call initiation failed:', exotelError)
-      return NextResponse.json({ 
-        error: "Failed to initiate call. Please try again." 
+      console.error('Exotel call failed:', exotelError)
+      return NextResponse.json({
+        error: "Failed to initiate call: " + (exotelError as Error).message,
+        code: "EXOTEL_ERROR"
       }, { status: 500 })
     }
 
   } catch (error) {
     console.error("Call initiation error:", error)
-    return NextResponse.json({ error: "Call initiation failed" }, { status: 500 })
-  }
-}
-
-// GET endpoint to get call session details
-export async function GET(request: NextRequest) {
-  try {
-    const authHeader = request.headers.get("authorization")
-    const token = authHeader?.replace("Bearer ", "")
-
-    if (!token) {
-      return NextResponse.json({ error: "No token provided" }, { status: 401 })
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
-    const { searchParams } = new URL(request.url)
-    const sessionId = searchParams.get('sessionId')
-
-    if (!sessionId) {
-      return NextResponse.json({ error: "Session ID is required" }, { status: 400 })
-    }
-
-    const connection = await mysql.createConnection(dbConfig)
-
-    const [sessionRows] = await connection.execute(`
-      SELECT 
-        cs.*,
-        caller.name as caller_name,
-        receiver.name as receiver_name,
-        caller_profile.profile_photo as caller_photo,
-        receiver_profile.profile_photo as receiver_photo
-      FROM call_sessions cs
-      JOIN users caller ON cs.caller_id = caller.id
-      JOIN users receiver ON cs.receiver_id = receiver.id
-      JOIN user_profiles caller_profile ON cs.caller_id = caller_profile.user_id
-      JOIN user_profiles receiver_profile ON cs.receiver_id = receiver_profile.user_id
-      WHERE cs.id = ? AND (cs.caller_id = ? OR cs.receiver_id = ?)
-    `, [sessionId, decoded.userId, decoded.userId])
-
-    const session = (sessionRows as any[])[0]
-
-    if (!session) {
-      await connection.end()
-      return NextResponse.json({ error: "Call session not found" }, { status: 404 })
-    }
-
-    await connection.end()
-
     return NextResponse.json({
-      session: {
-        id: session.id,
-        status: session.status,
-        duration: session.duration,
-        cost: session.cost,
-        caller_name: session.caller_name,
-        receiver_name: session.receiver_name,
-        caller_photo: session.caller_photo,
-        receiver_photo: session.receiver_photo,
-        caller_virtual_number: session.caller_virtual_number,
-        receiver_virtual_number: session.receiver_virtual_number,
-        is_caller: decoded.userId === session.caller_id,
-        created_at: session.created_at,
-        ended_at: session.ended_at
-      }
-    })
-
-  } catch (error) {
-    console.error("Get call session error:", error)
-    return NextResponse.json({ error: "Failed to get call session" }, { status: 500 })
+      error: "Internal server error",
+      code: "INTERNAL_ERROR"
+    }, { status: 500 })
+  } finally {
+    if (connection) {
+      await connection.end()
+    }
   }
 }

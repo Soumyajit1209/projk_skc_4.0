@@ -486,6 +486,8 @@ export default function Dashboard() {
               onViewPlans={() => {
                 fetchPlans();
                 setShowPlansModal(true);
+                
+
               }}
             />
           </div>

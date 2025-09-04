@@ -85,7 +85,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           setUser(userData)
           
-          // Redirect based on profile completion
           if (userData.profileComplete) {
             router.push("/dashboard")
           } else {
@@ -121,11 +120,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           name: data.user.name,
           phone: data.user.phone,
           role: data.user.role,
-          profileComplete: false, // Always false for new registrations
+          profileComplete: false, 
         }
         setUser(userData)
         
-        // Always redirect to profile creation after registration
         router.push("/profile/create")
         return true
       }

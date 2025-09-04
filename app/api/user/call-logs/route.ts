@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       logs: logs
     })
+    
 
   } catch (error) {
     console.error("Call logs error:", error)

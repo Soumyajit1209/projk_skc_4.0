@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { FileUpload } from "@/components/file-upload"
-import { Heart} from "lucide-react"
+import { Heart } from "lucide-react"
 
 export default function CreateProfilePage() {
   const { user, loading } = useAuth()
@@ -72,14 +72,11 @@ export default function CreateProfilePage() {
         },
         body: JSON.stringify(formData),
       })
-      
+
       const data = await response.json()
       
       if (response.ok) {
         setSuccess(true)
-        setTimeout(() => {
-          router.push("/dashboard")
-        }, 1500)
       } else {
         setError(data.error || "Failed to create profile")
       }
@@ -87,6 +84,12 @@ export default function CreateProfilePage() {
       setError("An error occurred while creating your profile")
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleGoToDashboard = () => {
+    if (success) {
+      router.push("/dashboard")
     }
   }
 
@@ -125,7 +128,7 @@ export default function CreateProfilePage() {
               <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-4">
                 <div className="flex items-center">
                   <Heart className="h-5 w-5 mr-2" />
-                  Profile created successfully! Redirecting to dashboard...
+                  Profile created successfully! Click "Go to Dashboard" to continue.
                 </div>
               </div>
             )}
@@ -305,6 +308,14 @@ export default function CreateProfilePage() {
                 disabled={submitting || success}
               >
                 {submitting ? "Creating Profile..." : success ? "Profile Created!" : "Create Profile"}
+              </Button>
+              <Button 
+                type="button" 
+                className="w-full h-11 bg-blue-600 hover:bg-blue-700 mt-2" 
+                disabled={submitting || !success}
+                onClick={handleGoToDashboard}
+              >
+                Go to Dashboard
               </Button>
             </form>
           </CardContent>
