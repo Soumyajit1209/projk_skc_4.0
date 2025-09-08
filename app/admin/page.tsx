@@ -18,6 +18,7 @@ import ProfileApprovalDialog from "@/components/admin/ProfileApprovalDialog"
 import PaymentVerificationDialog from "@/components/admin/PaymentVerificationDialog"
 import AdminSettings from "@/components/admin/AdminSettings"
 import CallSubscriptions from "@/components/admin/CallSubscriptions"
+import UserCallLogs from "@/components/admin/UserCallLogs"
 import { UserProfile, Payment, PotentialMatch, CurrentMatch } from "@/components/admin/types"
 import { fetchProfiles, fetchStats, fetchPayments, fetchMatches, handleProfileApproval, handlePaymentVerification, updateUserStatus, createMatches, removeMatch } from "@/components/admin/api"
 import { Button } from "@/components/ui/button"
@@ -26,6 +27,7 @@ export default function AdminPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("profiles")
+  const [callSubTab, setCallSubTab] = useState("subscriptions")
   const [profiles, setProfiles] = useState<UserProfile[]>([])
   const [filteredProfiles, setFilteredProfiles] = useState<UserProfile[]>([])
   const [loadingProfiles, setLoadingProfiles] = useState(true)
@@ -358,7 +360,24 @@ export default function AdminPage() {
           </TabsContent>
 
           <TabsContent value="call-subscriptions" className="space-y-4 sm:space-y-6">
-            <CallSubscriptions />
+            <Tabs value={callSubTab} onValueChange={setCallSubTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="subscriptions" className="flex items-center gap-2">
+                  <PhoneCall className="h-4 w-4" />
+                  <span>Subscriptions</span>
+                </TabsTrigger>
+                <TabsTrigger value="call-logs" className="flex items-center gap-2">
+                  <PhoneCall className="h-4 w-4" />
+                  <span>Call Logs</span>
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="subscriptions" className="space-y-4">
+                <CallSubscriptions />
+              </TabsContent>
+              <TabsContent value="call-logs" className="space-y-4">
+                <UserCallLogs />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-4 sm:space-y-6">

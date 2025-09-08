@@ -1,8 +1,7 @@
-
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Crown, PhoneCall, Check } from "lucide-react";
+import { Crown, PhoneCall, Check, TrendingUp, Zap, Calendar } from "lucide-react";
 import { ActivePlan } from "../../types/types";
 
 interface SubscriptionCardProps {
@@ -12,103 +11,146 @@ interface SubscriptionCardProps {
 }
 
 export default function SubscriptionCard({ activePlans, onUpgrade, formatDate }: SubscriptionCardProps) {
- return (
-  <Card className="border-0 shadow-lg bg-white/90 backdrop-blur-sm">
-    <CardHeader className="pb-3 sm:pb-4 p-4 sm:p-6">
-      <CardTitle className="text-base sm:text-lg font-semibold text-gray-900">
-        Your Subscriptions
-      </CardTitle>
-    </CardHeader>
-    <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
-      {/* Premium Plan Card - responsive */}
-      <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 sm:p-4 border border-green-200">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center space-x-1.5 sm:space-x-2">
-            <Crown className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
-            <span className="text-xs sm:text-sm font-medium text-gray-900">Premium Plan</span>
+  return (
+    <Card className="border-0 shadow-lg bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg font-bold text-gray-900 flex items-center">
+          <div className="h-8 w-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center mr-3">
+            <TrendingUp className="h-4 w-4 text-white" />
           </div>
-          {activePlans.normal_plan?.isActive ? (
-            <Badge className="bg-green-100 text-green-700 text-[10px] sm:text-xs px-1.5 sm:px-2">
-              Active
-            </Badge>
-          ) : (
-            <Badge className="bg-red-100 text-red-700 text-[10px] sm:text-xs px-1.5 sm:px-2">
-              Inactive
-            </Badge>
-          )}
-        </div>
-        
-        {activePlans.normal_plan?.isActive ? (
-          <div className="space-y-0.5 sm:space-y-1">
-            <p className="text-xs sm:text-sm font-semibold text-gray-900 truncate">
-              {activePlans.normal_plan.plan_name}
-            </p>
-            <p className="text-[10px] sm:text-xs text-gray-600">
-              {activePlans.normal_plan.daysLeft} days remaining
-            </p>
-            <p className="text-[10px] sm:text-xs text-gray-500 truncate">
-              Expires: {formatDate(activePlans.normal_plan.expires_at)}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <p className="text-[10px] sm:text-xs text-gray-600">Unlock full profile details</p>
-            <Button 
-              size="sm" 
-              className="w-full bg-green-600 hover:bg-green-700 text-white h-7 sm:h-8 text-xs" 
-              onClick={onUpgrade}
-            >
-              Upgrade Now
-            </Button>
-          </div>
-        )}
-      </div>
+          Your Plans
+        </CardTitle>
+      </CardHeader>
       
-      {/* Call Plan Card - responsive */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 sm:p-4 border border-blue-200">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center space-x-1.5 sm:space-x-2">
-            <PhoneCall className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-            <span className="text-xs sm:text-sm font-medium text-gray-900">Call Plan</span>
+      <CardContent className="space-y-4">
+        {/* Premium Plan Card */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-white/50 shadow-sm hover:shadow-md transition-all duration-200">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                activePlans.normal_plan?.isActive 
+                  ? 'bg-gradient-to-br from-amber-400 to-yellow-500' 
+                  : 'bg-gray-200'
+              }`}>
+                <Crown className={`h-5 w-5 ${
+                  activePlans.normal_plan?.isActive ? 'text-white' : 'text-gray-500'
+                }`} />
+              </div>
+              <div>
+                <h4 className="font-semibold text-gray-900">Premium Access</h4>
+                <p className="text-xs text-gray-600">View full profiles</p>
+              </div>
+            </div>
+            <Badge className={`${
+              activePlans.normal_plan?.isActive 
+                ? 'bg-green-100 text-green-700 border-green-200' 
+                : 'bg-red-100 text-red-700 border-red-200'
+            } px-2 py-1 text-xs font-medium`}>
+              {activePlans.normal_plan?.isActive ? 'Active' : 'Inactive'}
+            </Badge>
           </div>
-          {activePlans.call_plan?.isActive ? (
-            <Badge className="bg-blue-100 text-blue-700 text-[10px] sm:text-xs px-1.5 sm:px-2">
-              <span className="hidden sm:inline">{activePlans.call_plan.credits_remaining} calls</span>
-              <span className="sm:hidden">{activePlans.call_plan.credits_remaining}</span>
-            </Badge>
+          
+          {activePlans.normal_plan?.isActive ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-900 truncate">
+                  {activePlans.normal_plan.plan_name}
+                </span>
+                <div className="flex items-center text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                  <Calendar className="h-3 w-3 mr-1" />
+                  {activePlans.normal_plan.daysLeft} days left
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">
+                Expires: {formatDate(activePlans.normal_plan.expires_at)}
+              </p>
+            </div>
           ) : (
-            <Badge className="bg-red-100 text-red-700 text-[10px] sm:text-xs px-1.5 sm:px-2">
-              No calls
-            </Badge>
+            <div className="space-y-2">
+              <p className="text-xs text-gray-600">Unlock detailed profile information</p>
+              <Button 
+                size="sm" 
+                className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white text-xs h-8 font-medium shadow-sm" 
+                onClick={onUpgrade}
+              >
+                <Crown className="h-3 w-3 mr-1" />
+                Upgrade Now
+              </Button>
+            </div>
           )}
         </div>
         
-        {activePlans.call_plan?.isActive ? (
-          <div className="space-y-0.5 sm:space-y-1">
-            <p className="text-xs sm:text-sm font-semibold text-gray-900 truncate">
-              {activePlans.call_plan.plan_name}
-            </p>
-            <p className="text-[10px] sm:text-xs text-gray-600">
-              {activePlans.call_plan.credits_remaining} credits remaining
-            </p>
-            <p className="text-[10px] sm:text-xs text-gray-500 truncate">
-              Expires: {formatDate(activePlans.call_plan.expires_at)}
-            </p>
+        {/* Call Plan Card */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-white/50 shadow-sm hover:shadow-md transition-all duration-200">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                activePlans.call_plan?.isActive 
+                  ? 'bg-gradient-to-br from-blue-500 to-indigo-600' 
+                  : 'bg-gray-200'
+              }`}>
+                <PhoneCall className={`h-5 w-5 ${
+                  activePlans.call_plan?.isActive ? 'text-white' : 'text-gray-500'
+                }`} />
+              </div>
+              <div>
+                <h4 className="font-semibold text-gray-900">Call Credits</h4>
+                <p className="text-xs text-gray-600">Connect via calls</p>
+              </div>
+            </div>
+            <Badge className={`${
+              activePlans.call_plan?.isActive 
+                ? 'bg-blue-100 text-blue-700 border-blue-200' 
+                : 'bg-red-100 text-red-700 border-red-200'
+            } px-2 py-1 text-xs font-medium`}>
+              {activePlans.call_plan?.isActive 
+                ? `${activePlans.call_plan.credits_remaining} left` 
+                : 'No credits'
+              }
+            </Badge>
           </div>
-        ) : (
-          <div className="space-y-2">
-            <p className="text-[10px] sm:text-xs text-gray-600">Connect with matches via calls</p>
-            <Button 
-              size="sm" 
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white h-7 sm:h-8 text-xs" 
-              onClick={onUpgrade}
-            >
-              Buy Credits
-            </Button>
-          </div>
+          
+          {activePlans.call_plan?.isActive ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-900 truncate">
+                  {activePlans.call_plan.plan_name}
+                </span>
+                <div className="flex items-center text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                  <PhoneCall className="h-3 w-3 mr-1" />
+                  {activePlans.call_plan.credits_remaining} calls
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">
+                Expires: {formatDate(activePlans.call_plan.expires_at)}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs text-gray-600">Start meaningful conversations</p>
+              <Button 
+                size="sm" 
+                className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-xs h-8 font-medium shadow-sm" 
+                onClick={onUpgrade}
+              >
+                <Zap className="h-3 w-3 mr-1" />
+                Buy Credits
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Overall upgrade button if neither plan is active */}
+        {!activePlans.normal_plan?.isActive && !activePlans.call_plan?.isActive && (
+          <Button 
+            className="w-full bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-medium h-10 shadow-lg hover:shadow-xl transition-all duration-200" 
+            onClick={onUpgrade}
+          >
+            <TrendingUp className="h-4 w-4 mr-2" />
+            Upgrade Your Experience
+          </Button>
         )}
-      </div>
-    </CardContent>
-  </Card>
-);
+      </CardContent>
+    </Card>
+  );
 }

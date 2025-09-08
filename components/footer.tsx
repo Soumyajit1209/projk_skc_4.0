@@ -19,7 +19,7 @@ export function Footer() {
               />
             </div>
             <p className="text-gray-400 leading-relaxed">
-              India's most trusted matrimonial platform helping thousands find their perfect life partner.
+             A trusted matrimonial platform helping thousands find their perfect life partner.
             </p>
           </div>
 
@@ -30,16 +30,6 @@ export function Footer() {
               <li>
                 <Link href="/about" className="text-gray-400 hover:text-white transition-colors">
                   About Us
-                </Link>
-              </li>
-              <li>
-                <Link href="/how-it-works" className="text-gray-400 hover:text-white transition-colors">
-                  How It Works
-                </Link>
-              </li>
-              <li>
-                <Link href="/success-stories" className="text-gray-400 hover:text-white transition-colors">
-                  Success Stories
                 </Link>
               </li>
               <li>
@@ -54,11 +44,7 @@ export function Footer() {
           <div>
             <h3 className="text-lg font-semibold mb-4">Support</h3>
             <ul className="space-y-2">
-              <li>
-                <Link href="/help" className="text-gray-400 hover:text-white transition-colors">
-                  Help Center
-                </Link>
-              </li>
+              
               <li>
                 <Link href="/privacy" className="text-gray-400 hover:text-white transition-colors">
                   Privacy Policy
@@ -69,11 +55,7 @@ export function Footer() {
                   Terms of Service
                 </Link>
               </li>
-              <li>
-                <Link href="/safety" className="text-gray-400 hover:text-white transition-colors">
-                  Safety Tips
-                </Link>
-              </li>
+              
             </ul>
           </div>
 
@@ -87,7 +69,7 @@ export function Footer() {
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="w-5 h-5 text-rose-500" />
-                <span className="text-gray-400">+91 9477027129</span>
+                <span className="text-gray-400">+91 94770 27129</span>
               </li>
               <li className="flex items-center gap-3">
                 <MapPin className="w-5 h-5 text-rose-500" />
@@ -98,7 +80,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-gray-800 mt-12 pt-8 text-center">
-          <p className="text-gray-400">© 2025 MatchB. All rights reserved. Made with ❤️ for finding true love.</p>
+          <p className="text-gray-400">© 2025 MatchB. All rights reserved. Made with ❤️ for finding your match.</p>
         </div>
       </div>
     </footer>

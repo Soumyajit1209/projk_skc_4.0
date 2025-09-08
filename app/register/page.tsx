@@ -157,15 +157,6 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 to-pink-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-rose-600 hover:text-rose-700 mb-4 transition-colors">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Home
-          </Link>
-          <div className="flex items-center justify-center gap-2 mb-2">
-          </div>
-        </div>
-
         <Card className="shadow-xl border-0">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-3">
@@ -330,6 +321,13 @@ export default function RegisterPage() {
                   "Create Account"
                 )}
               </Button>
+
+              <div className="mt-1 text-center">
+                <Link href="/" className="inline-flex items-center gap-2 text-rose-600 hover:text-rose-700 transition-colors">
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Home
+                </Link>
+              </div>
             </form>
 
             <div className="mt-6 text-center">

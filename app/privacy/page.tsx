@@ -79,11 +79,11 @@ export default function PrivacyPage() {
                   If you have any questions about this Privacy Policy, please contact us at:
                 </p>
                 <div className="mt-4 text-gray-700">
-                  <p>Email: privacy@matchb.com</p>
-                  <p>Phone: +91 98765 43210</p>
-                  <p>Address: 123 Business Center, MG Road, Bangalore, Karnataka 560001</p>
+                  <p>Email: matchb124@outlook.com</p>
+                  <p>Phone: +91 94770 27129</p>
+                  <p>Address: Kolkata, West Bengal</p>
                 </div>
-              </section>
+              </section>  
             </div>
           </div>
         </div>

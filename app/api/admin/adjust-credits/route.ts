@@ -75,9 +75,9 @@ export async function POST(request: NextRequest) {
           
           await connection.execute(`
             INSERT INTO user_call_credits 
-            (user_id, plan_id, credits_purchased, credits_remaining, expires_at, created_at, updated_at)
-            VALUES (?, NULL, ?, ?, ?, NOW(), NOW())
-          `, [userId, credits, credits, expirationDate])
+            (user_id, plan_id, credits_purchased, credits_remaining, expires_at, admin_allocated, allocation_notes, created_at, updated_at)
+            VALUES (?, NULL, ?, ?, ?, 1, ?, NOW(), NOW())
+          `, [userId, credits, credits, expirationDate, reason])
           
           newCreditsRemaining = credits
           newCreditsPurchased = credits
@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
         }
         
         newCreditsRemaining = currentCredits.credits_remaining - credits
+        newCreditsPurchased = currentCredits.credits_purchased // Don't change purchased amount
         
         await connection.execute(`
           UPDATE user_call_credits 
@@ -103,6 +104,7 @@ export async function POST(request: NextRequest) {
 
       case 'set':
         newCreditsRemaining = credits
+        newCreditsPurchased = currentCredits.credits_purchased // Don't change purchased amount
         
         await connection.execute(`
           UPDATE user_call_credits 
@@ -140,9 +142,19 @@ export async function POST(request: NextRequest) {
 
     await connection.end()
 
-}catch (error) {
-    console.error("Exotel credits log error:", error)
-    return NextResponse.json({ error: "Failed to post" }, { status: 500 })
+    // ✅ Fixed: Add missing return statement
+    return NextResponse.json({
+      success: true,
+      message: "Credits adjusted successfully",
+      oldBalance: currentCredits?.credits_remaining || 0,
+      newBalance: newCreditsRemaining,
+      action: action,
+      creditsAdjusted: credits
+    })
+
+  } catch (error) {
+    console.error("Credit adjustment error:", error)
+    return NextResponse.json({ error: "Failed to adjust credits" }, { status: 500 })
   }
 }
 

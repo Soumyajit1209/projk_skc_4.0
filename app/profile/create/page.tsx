@@ -13,7 +13,7 @@ import { FileUpload } from "@/components/file-upload"
 import { Heart } from "lucide-react"
 
 export default function CreateProfilePage() {
-  const { user, loading } = useAuth()
+  const { user, loading, updateProfileStatus } = useAuth()
   const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
@@ -44,12 +44,6 @@ export default function CreateProfilePage() {
       router.push("/login")
       return
     }
-    
-    // If user already has a complete profile, redirect to dashboard
-    if (!loading && user && user.profileComplete) {
-      router.push("/dashboard")
-      return
-    }
   }, [user, loading, router])
 
   const handleInputChange = (field: string, value: string) => {
@@ -77,6 +71,12 @@ export default function CreateProfilePage() {
       
       if (response.ok) {
         setSuccess(true)
+        // Update the user's profile completion status in auth context
+        updateProfileStatus(true)
+        // Directly redirect to dashboard after successful profile creation
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 1000) // Small delay to show success message
       } else {
         setError(data.error || "Failed to create profile")
       }
@@ -88,9 +88,7 @@ export default function CreateProfilePage() {
   }
 
   const handleGoToDashboard = () => {
-    if (success) {
-      router.push("/dashboard")
-    }
+    router.push("/dashboard")
   }
 
   if (loading) {
@@ -128,7 +126,7 @@ export default function CreateProfilePage() {
               <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-4">
                 <div className="flex items-center">
                   <Heart className="h-5 w-5 mr-2" />
-                  Profile created successfully! Click "Go to Dashboard" to continue.
+                  Profile created successfully! Redirecting to dashboard...
                 </div>
               </div>
             )}
@@ -307,16 +305,18 @@ export default function CreateProfilePage() {
                 className="w-full h-11 bg-rose-600 hover:bg-rose-700" 
                 disabled={submitting || success}
               >
-                {submitting ? "Creating Profile..." : success ? "Profile Created!" : "Create Profile"}
+                {submitting ? "Creating Profile..." : success ? "Profile Created! Redirecting..." : "Create Profile"}
               </Button>
-              <Button 
-                type="button" 
-                className="w-full h-11 bg-blue-600 hover:bg-blue-700 mt-2" 
-                disabled={submitting || !success}
-                onClick={handleGoToDashboard}
-              >
-                Go to Dashboard
-              </Button>
+              
+              {success && (
+                <Button 
+                  type="button" 
+                  className="w-full h-11 bg-blue-600 hover:bg-blue-700 mt-2" 
+                  onClick={handleGoToDashboard}
+                >
+                  Go to Dashboard Now
+                </Button>
+              )}
             </form>
           </CardContent>
         </Card>

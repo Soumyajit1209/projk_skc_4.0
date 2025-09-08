@@ -1,35 +1,13 @@
+import { Header } from "@/components/header"
 import Image from "next/image"
 
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 to-pink-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
-              <Image src="/matchb-logo.png" alt="MatchB" width={120} height={40} className="h-8 w-auto" />
-            </div>
-            <nav className="hidden md:flex space-x-8">
-              <a href="/" className="text-gray-700 hover:text-rose-600 transition-colors">
-                Home
-              </a>
-              <a href="/about" className="text-gray-700 hover:text-rose-600 transition-colors">
-                About
-              </a>
-              <a href="/plans" className="text-gray-700 hover:text-rose-600 transition-colors">
-                Plans
-              </a>
-              <a href="/contact" className="text-gray-700 hover:text-rose-600 transition-colors">
-                Contact
-              </a>
-              <a href="/login" className="text-gray-700 hover:text-rose-600 transition-colors">
-                Login
-              </a>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Header />
+
+      <div className="pt-16">
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="bg-white rounded-2xl shadow-lg p-8">
@@ -109,14 +87,15 @@ export default function TermsPage() {
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">8. Contact Information</h2>
               <p className="text-gray-700">For questions about these Terms of Service, please contact us at:</p>
               <div className="mt-4 text-gray-700">
-                <p>Email: legal@matchb.com</p>
-                <p>Phone: +91 98765 43210</p>
-                <p>Address: 123 Business Center, MG Road, Bangalore, Karnataka 560001</p>
+                <p>Email: matchb124@outlook.com</p>
+                <p>Phone: +91 94770 27129</p>
+                <p>Address: Kolkata, West Bengal</p>
               </div>
             </section>
           </div>
         </div>
       </div>
+    </div>
     </div>
   )
 }

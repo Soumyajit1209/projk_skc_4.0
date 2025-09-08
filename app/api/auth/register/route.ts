@@ -1,4 +1,6 @@
-import  { NextRequest, NextResponse } from "next/server"
+// app/api/register/route.ts (Updated, was provided as import { NextRequest, NextResponse } from "next/server" ...)
+
+import { NextRequest, NextResponse } from "next/server"
 import mysql from "mysql2/promise"
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
@@ -15,7 +17,7 @@ export async function POST(request: NextRequest) {
   try {
     const { email, password, name, phone } = await request.json()
 
-    // Validate inputs
+    // Validate inputs (unchanged)
     if (!email || !password || !name || !phone) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 })
     }
@@ -31,7 +33,7 @@ export async function POST(request: NextRequest) {
 
     const connection = await mysql.createConnection(dbConfig)
 
-    // Check if user already exists
+    // Check if user already exists (unchanged)
     const [existingUsers] = await connection.execute(
       "SELECT id FROM users WHERE email = ? OR phone = ?",
       [email, phone]
@@ -45,10 +47,13 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Create user
+    // Generate recovery password (plain)
+    const recoveryPassword = Math.random().toString(36).slice(-10);
+
+    // Create user with recovery_password
     const [result] = await connection.execute(
-      "INSERT INTO users (name, email, phone, password, role, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
-      [name, email, phone, hashedPassword, "user"]
+      "INSERT INTO users (name, email, phone, password, recovery_password, role, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())",
+      [name, email, phone, hashedPassword, recoveryPassword, "user"]
     )
 
     const userId = (result as any).insertId

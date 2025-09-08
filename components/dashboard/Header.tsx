@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { LogOut, Home, Check, PhoneCall } from "lucide-react";
 import { UserProfile, ActivePlan } from "../../types/types";
+import Link from "next/link";
 
 interface HeaderProps {
   user: any;
@@ -19,13 +20,15 @@ export default function Header({ user, userProfile, activePlans, logout }: Heade
       <div className="flex justify-between items-center h-14 sm:h-16">
         {/* Left side - Logo */}
         <div className="flex items-center">
-          <Image 
-            src="/matchb-logo.png" 
-            alt="MatchB" 
-            width={100} 
-            height={32} 
-            className="h-6 sm:h-8 w-auto" 
-          />
+         <Link href="/">
+            <Image 
+              src="/matchb-logo.png" 
+              alt="MatchB" 
+              width={100} 
+              height={32} 
+              className="h-6 sm:h-8 w-auto" 
+            />
+          </Link>
           {/* Hide dashboard text on very small screens */}
           <div className="ml-4 sm:ml-6 hidden md:flex space-x-1">
             <Button variant="ghost" size="sm" className="text-gray-600 hover:text-blue-600 text-sm">

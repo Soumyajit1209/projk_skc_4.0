@@ -1,8 +1,6 @@
-import { type NextRequest, NextResponse } from "next/server"
-import mysql from "mysql2/promise"
-import jwt from "jsonwebtoken"
-
-
+import { type NextRequest, NextResponse } from "next/server";
+import mysql from "mysql2/promise";
+import jwt from "jsonwebtoken";
 
 const dbConfig = {
   host: process.env.DB_HOST,
@@ -10,63 +8,44 @@ const dbConfig = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: Number.parseInt(process.env.DB_PORT || "3306"),
-}
+};
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization")
-    const token = authHeader?.replace("Bearer ", "")
+    const authHeader = request.headers.get("authorization");
+    const token = authHeader?.replace("Bearer ", "");
 
     if (!token) {
-      return NextResponse.json({ error: "No token provided" }, { status: 401 })
+      return NextResponse.json({ error: "No token provided" }, { status: 401 });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
-    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any;
+
     if (decoded.role !== "admin") {
-      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
     }
 
-    const connection = await mysql.createConnection(dbConfig)
+    const connection = await mysql.createConnection(dbConfig);
 
-    // Enhanced query with subscription information
     const [rows] = await connection.execute(`
-   SELECT 
-     up.*,
-     u.name, u.email, u.phone,
-     
-     -- Check for active normal plan
-     CASE WHEN ns.id IS NOT NULL THEN 1 ELSE 0 END as has_normal_plan,
-     
-     -- Check for active call plan
-     CASE WHEN cc.id IS NOT NULL THEN 1 ELSE 0 END as has_call_plan,
-     cc.credits_remaining as call_credits_remaining,
-     
-     -- Count total matches
-     (SELECT COUNT(*) FROM matches WHERE user_id = up.user_id OR matched_user_id = up.user_id) as total_matches
-     
-   FROM user_profiles up
-   JOIN users u ON up.user_id = u.id
-   
-   -- Left join for active normal subscriptions
-   LEFT JOIN user_subscriptions ns ON up.user_id = ns.user_id 
-     AND ns.status = 'active' 
-     AND ns.expires_at > NOW()
-   LEFT JOIN plans np ON ns.plan_id = np.id AND np.type = 'normal'
-   
-   -- Left join for active call credits
-   LEFT JOIN user_call_credits cc ON up.user_id = cc.user_id 
-     AND cc.credits_remaining > 0 
-     AND cc.expires_at > NOW()
-   LEFT JOIN plans cp ON cc.plan_id = cp.id AND cp.type = 'call'
-   
-   WHERE u.role = 'user'
-   ORDER BY up.created_at DESC
- `)
+      SELECT 
+        up.*,
+        u.name, u.email, u.phone, u.recovery_password,
+        CASE WHEN ns.id IS NOT NULL THEN 1 ELSE 0 END as has_normal_plan,
+        CASE WHEN cc.id IS NOT NULL THEN 1 ELSE 0 END as has_call_plan,
+        COALESCE(cc.credits_remaining, 0) as call_credits_remaining,
+        (SELECT COUNT(*) FROM matches WHERE user_id = up.user_id OR matched_user_id = up.user_id) as total_matches
+      FROM user_profiles up
+      JOIN users u ON up.user_id = u.id
+      LEFT JOIN user_subscriptions ns ON ns.user_id = u.id AND ns.status = 'active' AND ns.expires_at > NOW()
+      LEFT JOIN user_call_credits cc ON cc.user_id = u.id AND cc.credits_remaining > 0 AND cc.expires_at > NOW()
+      WHERE u.role = 'user'
+      ORDER BY up.created_at DESC
+    `);
 
-    await connection.end()
+    await connection.end();
 
-    const profiles = (rows as any[]).map(row => ({
+    const profiles = (rows as any[]).map((row) => ({
       id: row.id,
       user_id: row.user_id,
       name: row.name,
@@ -97,13 +76,13 @@ export async function GET(request: NextRequest) {
       has_normal_plan: row.has_normal_plan === 1,
       has_call_plan: row.has_call_plan === 1,
       call_credits_remaining: row.call_credits_remaining || 0,
-      total_matches: row.total_matches || 0
-    }))
+      total_matches: row.total_matches || 0,
+      recovery_password: row.recovery_password || null,
+    }));
 
-    return NextResponse.json(profiles)
-
+    return NextResponse.json(profiles);
   } catch (error) {
-    console.error("Enhanced profiles error:", error)
-    return NextResponse.json({ error: "Failed to fetch enhanced profiles" }, { status: 500 })
+    console.error("Enhanced profiles error:", error);
+    return NextResponse.json({ error: "Failed to fetch enhanced profiles" }, { status: 500 });
   }
 }

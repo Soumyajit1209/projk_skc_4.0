@@ -26,6 +26,7 @@ export interface UserProfile {
   rejection_reason?: string
   created_at: string
   updated_at?: string
+  recovery_password?: string | null;
 }
 
 export interface Payment {

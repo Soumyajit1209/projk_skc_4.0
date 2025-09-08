@@ -18,6 +18,7 @@ interface AuthContextType {
   login: (identifier: string, password: string, type: "user" | "admin") => Promise<boolean>
   register: (email: string, password: string, name: string, phone: string) => Promise<boolean>
   logout: () => void
+  updateProfileStatus: (profileComplete: boolean) => void
   loading: boolean
 }
 
@@ -133,6 +134,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const updateProfileStatus = (profileComplete: boolean) => {
+    if (user) {
+      setUser(prev => prev ? { ...prev, profileComplete } : null)
+    }
+  }
+
   const logout = () => {
     localStorage.removeItem("token")
     setUser(null)
@@ -140,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, updateProfileStatus, loading }}>
       {children}
     </AuthContext.Provider>
   )

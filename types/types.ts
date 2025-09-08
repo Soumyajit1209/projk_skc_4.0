@@ -51,14 +51,16 @@ export interface ActivePlan {
   };
 }
 
+
 export interface CallLog {
   id: number;
-  caller_name: string;
-  receiver_name: string;
-  call_type: "incoming" | "outgoing";
+  other_user_name: string;
+  other_user_photo: string;
   duration: number;
-  cost: number;
+  call_type: string;
+  call_status: string;
   created_at: string;
+  recording_url: string;
 }
 
 export interface SearchFilters {

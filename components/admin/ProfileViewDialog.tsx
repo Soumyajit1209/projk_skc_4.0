@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Mail, Phone, Calendar, User } from "lucide-react"
+import { Mail, Phone, Calendar, User, Key } from "lucide-react" // Added Key import
 import { UserProfile } from "./types"
 
 interface ProfileViewDialogProps {
@@ -141,6 +141,18 @@ export default function ProfileViewDialog({ viewDialog, setViewDialog }: Profile
                 <div>
                   <h4 className="text-sm font-medium mb-2 text-red-600">Rejection Reason</h4>
                   <p className="text-sm text-red-600">{viewDialog.profile.rejection_reason}</p>
+                </div>
+              )}
+
+              {/* New Recovery Password Section */}
+              {viewDialog.profile.recovery_password && (
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                    <Key className="h-4 w-4 text-gray-500" />
+                    Recovery Password (Admin Only)
+                  </h4>
+                  <p className="text-sm text-gray-600 bg-gray-100 p-2 rounded">{viewDialog.profile.recovery_password}</p>
+                  <p className="text-xs text-gray-500 mt-1">Use this to login or share with user if they forget their password.</p>
                 </div>
               )}
 
