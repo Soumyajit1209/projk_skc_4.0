@@ -517,9 +517,9 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <Toaster 
-        position="top-right" 
-        reverseOrder={false} 
+      <Toaster
+        position="top-right"
+        reverseOrder={false}
         toastOptions={{
           className: 'text-sm',
           style: {
@@ -557,7 +557,7 @@ export default function Dashboard() {
                 setShowPlansModal(true);
               }}
             />
-            
+
             {/* Call Logs Dialog */}
             <Dialog>
               <DialogTrigger asChild>
@@ -594,9 +594,9 @@ export default function Dashboard() {
                       <Card key={log.id} className="p-3 border-slate-200">
                         <div className="flex items-center space-x-3">
                           {log.other_user_photo ? (
-                            <img 
-                              src={log.other_user_photo} 
-                              alt="Profile" 
+                            <img
+                              src={log.other_user_photo}
+                              alt="Profile"
                               className="w-10 h-10 rounded-full object-cover"
                             />
                           ) : (
@@ -609,11 +609,10 @@ export default function Dashboard() {
                               {log.other_user_name || "Unknown"}
                             </p>
                             <div className="flex items-center space-x-3 text-sm text-gray-500">
-                              <span className={`px-2 py-1 rounded text-xs ${
-                                log.call_type === 'outgoing' 
-                                  ? 'bg-green-100 text-green-700' 
+                              <span className={`px-2 py-1 rounded text-xs ${log.call_type === 'outgoing'
+                                  ? 'bg-green-100 text-green-700'
                                   : 'bg-blue-100 text-blue-700'
-                              }`}>
+                                }`}>
                                 {log.call_type}
                               </span>
                               <span className="flex items-center">
@@ -621,6 +620,10 @@ export default function Dashboard() {
                                 {log.duration}s
                               </span>
                             </div>
+                            {/* Added date display */}
+                            <p className="text-xs text-gray-400 mt-1">
+                              {formatDate(log.created_at)}
+                            </p>
                           </div>
                           {log.recording_url && (
                             <Button
@@ -629,9 +632,9 @@ export default function Dashboard() {
                               asChild
                               className="text-blue-600 hover:text-blue-700"
                             >
-                              <a 
-                                href={log.recording_url} 
-                                target="_blank" 
+                              <a
+                                href={log.recording_url}
+                                target="_blank"
                                 rel="noopener noreferrer"
                               >
                                 <Play className="h-4 w-4" />
@@ -644,8 +647,8 @@ export default function Dashboard() {
                   </div>
                 )}
                 <div className="flex justify-between pt-4 border-t">
-                  <Button 
-                    onClick={fetchCallLogs} 
+                  <Button
+                    onClick={fetchCallLogs}
                     disabled={loadingCallLogs}
                     variant="outline"
                     className="flex items-center"
@@ -660,7 +663,7 @@ export default function Dashboard() {
               </DialogContent>
             </Dialog>
           </div>
-          
+
           <div className="lg:col-span-3">
             <MatchesTab
               activeTab={activeTab}
@@ -707,7 +710,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-      
+
       {/* All Modals */}
       <PlansModal
         open={showPlansModal}
