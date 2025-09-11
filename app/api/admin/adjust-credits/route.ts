@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
         }
         
         newCreditsRemaining = currentCredits.credits_remaining - credits
-        newCreditsPurchased = currentCredits.credits_purchased // Don't change purchased amount
+        newCreditsPurchased = currentCredits.credits_purchased
         
         await connection.execute(`
           UPDATE user_call_credits 
@@ -104,7 +104,8 @@ export async function POST(request: NextRequest) {
 
       case 'set':
         newCreditsRemaining = credits
-        newCreditsPurchased = currentCredits.credits_purchased // Don't change purchased amount
+        newCreditsPurchased = currentCredits.credits_purchased
+        
         
         await connection.execute(`
           UPDATE user_call_credits 
@@ -117,8 +118,6 @@ export async function POST(request: NextRequest) {
         await connection.end()
         return NextResponse.json({ error: "Invalid action" }, { status: 400 })
     }
-
-    // Log the credit adjustment
     await connection.execute(`
       INSERT INTO credit_adjustments 
       (user_id, admin_id, action, credits, reason, old_balance, new_balance, created_at)
@@ -132,8 +131,6 @@ export async function POST(request: NextRequest) {
       currentCredits?.credits_remaining || 0, 
       newCreditsRemaining
     ])
-
-    // Update Exotel credit log
     const logAction = action === 'add' ? 'manual_add' : action === 'remove' ? 'manual_remove' : 'manual_set'
     await connection.execute(`
       INSERT INTO exotel_credit_log (action, credits, user_id, admin_id, reason, created_at)
@@ -141,8 +138,6 @@ export async function POST(request: NextRequest) {
     `, [logAction, credits, userId, decoded.userId, reason])
 
     await connection.end()
-
-    // ✅ Fixed: Add missing return statement
     return NextResponse.json({
       success: true,
       message: "Credits adjusted successfully",

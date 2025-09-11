@@ -392,7 +392,9 @@ export default function CallSubscriptions() {
                 </div>
                 <div className="text-2xl font-bold text-gray-900">{exotelCredit.used_credits.toLocaleString()}</div>
                 <Progress 
-                  value={(exotelCredit.used_credits / exotelCredit.total_credits) * 100} 
+
+
+value={Math.round((exotelCredit.used_credits / exotelCredit.total_credits) * 100)} 
                   className="mt-2 h-1"
                 />
               </CardContent>
@@ -415,7 +417,7 @@ export default function CallSubscriptions() {
                 </div>
                 <div className="text-2xl font-bold text-gray-900">{exotelCredit.current_month_usage.toLocaleString()}</div>
                 <Progress 
-                  value={(exotelCredit.current_month_usage / exotelCredit.monthly_limit) * 100} 
+                  value={Math.round((exotelCredit.current_month_usage / exotelCredit.monthly_limit) * 100)} 
                   className="mt-2 h-1"
                 />
               </CardContent>
