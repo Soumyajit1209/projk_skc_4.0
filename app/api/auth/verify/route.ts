@@ -38,14 +38,34 @@ export async function GET(request: NextRequest) {
     }
 
     let profileComplete = true // Default for admin users
+    let profileExists = true // Track if profile exists
+    
     if (user.role === 'user') {
       const [profileRows] = await connection.execute(
-        "SELECT id, status FROM user_profiles WHERE user_id = ?", 
+        `SELECT id, status, age, gender, caste, religion, education, occupation, 
+         state, city, marital_status FROM user_profiles WHERE user_id = ?`, 
         [decoded.userId]
       )
       
       const profiles = profileRows as any[]
-      profileComplete = profiles.length > 0 && profiles[0].status !== 'rejected'
+      
+      if (profiles.length === 0) {
+        // Profile doesn't exist
+        profileComplete = false
+        profileExists = false
+      } else {
+        const profile = profiles[0]
+        
+        // Check if profile is rejected
+        if (profile.status === 'rejected') {
+          profileComplete = false
+        } else {
+          // Check if all required fields are filled
+          const requiredFields = ['age', 'gender', 'caste', 'religion', 'education', 'occupation', 'state', 'city', 'marital_status']
+          profileComplete = requiredFields.every(field => profile[field] && profile[field].toString().trim() !== '')
+        }
+        profileExists = true
+      }
     }
 
     await connection.end()
@@ -58,6 +78,7 @@ export async function GET(request: NextRequest) {
         phone: user.phone,
         role: user.role,
         profileComplete,
+        profileExists, // Add this to track if profile exists
       },
     })
   } catch (error) {

@@ -13,9 +13,9 @@ export async function GET(request: NextRequest) {
   try {
     const connection = await mysql.createConnection(dbConfig)
 
-    // Get all active plans
+    // Get all active plans with type information
     const [planRows] = await connection.execute(
-      "SELECT * FROM plans WHERE is_active = 1 ORDER BY price ASC"
+      "SELECT * FROM plans WHERE is_active = 1 ORDER BY type, price ASC"
     )
 
     const plans = (planRows as any[]).map(plan => ({

@@ -34,6 +34,8 @@ export default function Dashboard() {
   const { user, logout, loading } = useAuth();
   const router = useRouter();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [profileExists, setProfileExists] = useState(true); // New state to track if profile exists
+  const [profileError, setProfileError] = useState<string | null>(null); // New state for profile errors
   const [matches, setMatches] = useState<UserProfile[]>([]);
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -101,10 +103,8 @@ export default function Dashboard() {
       return;
     }
 
-    if (user && !user.profileComplete) {
-      router.push("/profile/create");
-      return;
-    }
+    // Remove the automatic redirect for incomplete profiles
+    // Allow users to access dashboard but show profile completion options
 
     if (user) {
       fetchUserProfile();
@@ -128,6 +128,8 @@ export default function Dashboard() {
       if (response.ok) {
         const data = await response.json();
         setUserProfile(data.profile);
+        setProfileExists(true);
+        setProfileError(null);
         setEditFormData({
           age: data.profile.age?.toString() || "",
           gender: data.profile.gender || "",
@@ -148,11 +150,20 @@ export default function Dashboard() {
           partner_preferences: data.profile.partner_preferences || "",
           profile_photo: data.profile.profile_photo || "",
         });
+      } else if (response.status === 404) {
+        // Profile doesn't exist
+        setUserProfile(null);
+        setProfileExists(false);
+        setProfileError("Profile not found. Please complete your profile to access all features.");
       } else {
+        setProfileError("Failed to fetch profile details");
+        setProfileExists(false);
         toast.error("Failed to fetch user profile");
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
+      setProfileError("Network error while fetching profile");
+      setProfileExists(false);
       toast.error("An error occurred while fetching your profile");
     } finally {
       setLoadingProfile(false);
@@ -393,6 +404,10 @@ export default function Dashboard() {
     setEditSuccess(false);
   };
 
+  const handleCompleteProfile = () => {
+    router.push("/profile/create");
+  };
+
   const handleChangePassword = () => {
     setShowChangePassword(true);
     setPasswordError("");
@@ -416,7 +431,6 @@ export default function Dashboard() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(editFormData),
@@ -535,6 +549,18 @@ export default function Dashboard() {
         activePlans={activePlans}
         logout={logout}
       />
+
+      {/* Profile Error Alert */}
+      {profileError && (
+        <div className="max-w-7xl mx-auto px-4 lg:px-6 py-2">
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <div className="text-orange-600 font-medium">{profileError}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-4 lg:px-6 py-4 lg:py-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
           <div className="lg:col-span-1 space-y-4">
@@ -542,6 +568,8 @@ export default function Dashboard() {
               userProfile={userProfile}
               onEditProfile={handleEditProfile}
               onChangePassword={handleChangePassword}
+              onCompleteProfile={handleCompleteProfile}
+              profileExists={profileExists}
             />
             <SubscriptionCard
               activePlans={activePlans}
@@ -620,7 +648,6 @@ export default function Dashboard() {
                                 {log.duration}s
                               </span>
                             </div>
-                            {/* Added date display */}
                             <p className="text-xs text-gray-400 mt-1">
                               {formatDate(log.created_at)}
                             </p>
@@ -665,48 +692,70 @@ export default function Dashboard() {
           </div>
 
           <div className="lg:col-span-3">
-            <MatchesTab
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              matches={matches}
-              loadingMatches={loadingMatches}
-              onViewProfile={viewProfileDetails}
-              onInitiateCall={initiateCall}
-              activePlans={activePlans}
-              makingCall={makingCall}
-              onUpgrade={() => {
-                fetchPlans();
-                setShowPlansModal(true);
-              }}
-            />
-            <SearchTab
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              searchFilters={searchFilters}
-              setSearchFilters={setSearchFilters}
-              searchResults={searchResults}
-              loadingSearch={loadingSearch}
-              onSearch={searchProfiles}
-              onResetFilters={() => {
-                setSearchFilters({
-                  location: "",
-                  gender: "",
-                  ageMin: "",
-                  ageMax: "",
-                  religion: "",
-                  education: "",
-                  occupation: "",
-                });
-                setSearchResults([]);
-                toast.success("Search filters reset");
-              }}
-              activePlans={activePlans}
-              onUpgrade={() => {
-                fetchPlans();
-                setShowPlansModal(true);
-              }}
-              onViewProfile={viewProfileDetails}
-            />
+            {!profileExists || !userProfile ? (
+              <div className="bg-white rounded-lg shadow-lg p-6 text-center">
+                <div className="text-gray-500 mb-4">
+                  <svg className="h-16 w-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Complete Your Profile</h3>
+                  <p className="text-gray-600 mb-4">
+                    Your profile is incomplete. Complete it to start finding matches and unlock all features.
+                  </p>
+                  <Button
+                    onClick={handleCompleteProfile}
+                    className="bg-rose-600 hover:bg-rose-700"
+                  >
+                    Complete Profile Now
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <MatchesTab
+                  activeTab={activeTab}
+                  setActiveTab={setActiveTab}
+                  matches={matches}
+                  loadingMatches={loadingMatches}
+                  onViewProfile={viewProfileDetails}
+                  onInitiateCall={initiateCall}
+                  activePlans={activePlans}
+                  makingCall={makingCall}
+                  onUpgrade={() => {
+                    fetchPlans();
+                    setShowPlansModal(true);
+                  }}
+                />
+                <SearchTab
+                  activeTab={activeTab}
+                  setActiveTab={setActiveTab}
+                  searchFilters={searchFilters}
+                  setSearchFilters={setSearchFilters}
+                  searchResults={searchResults}
+                  loadingSearch={loadingSearch}
+                  onSearch={searchProfiles}
+                  onResetFilters={() => {
+                    setSearchFilters({
+                      location: "",
+                      gender: "",
+                      ageMin: "",
+                      ageMax: "",
+                      religion: "",
+                      education: "",
+                      occupation: "",
+                    });
+                    setSearchResults([]);
+                    toast.success("Search filters reset");
+                  }}
+                  activePlans={activePlans}
+                  onUpgrade={() => {
+                    fetchPlans();
+                    setShowPlansModal(true);
+                  }}
+                  onViewProfile={viewProfileDetails}
+                />
+              </>
+            )}
           </div>
         </div>
       </div>

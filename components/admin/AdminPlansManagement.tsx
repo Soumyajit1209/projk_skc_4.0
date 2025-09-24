@@ -10,9 +10,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { 
   CreditCard, Plus, Edit2, Trash2, Loader2, DollarSign, 
-  Calendar, CheckCircle, XCircle, Save, X 
+  Calendar, CheckCircle, XCircle, Save, X, Phone, Users 
 } from "lucide-react"
 
 interface Plan {
@@ -20,8 +21,12 @@ interface Plan {
   name: string
   price: number
   duration_months: number
+  call_credits?: number
   features: string
   description: string
+  type: 'normal' | 'call'
+  can_view_details: boolean
+  can_make_calls: boolean
   is_active: boolean
   created_at: string
   updated_at?: string
@@ -31,8 +36,12 @@ interface FormData {
   name: string
   price: string
   duration_months: string
+  call_credits: string
   features: string
   description: string
+  type: 'normal' | 'call'
+  can_view_details: boolean
+  can_make_calls: boolean
   is_active: boolean
 }
 
@@ -51,8 +60,12 @@ export default function AdminPlansManagement() {
     name: "",
     price: "",
     duration_months: "",
+    call_credits: "",
     features: "",
     description: "",
+    type: 'normal',
+    can_view_details: true,
+    can_make_calls: false,
     is_active: true
   })
 
@@ -87,8 +100,12 @@ export default function AdminPlansManagement() {
       name: "",
       price: "",
       duration_months: "",
+      call_credits: "",
       features: "",
       description: "",
+      type: 'normal',
+      can_view_details: true,
+      can_make_calls: false,
       is_active: true
     })
   }
@@ -98,14 +115,27 @@ export default function AdminPlansManagement() {
     if (message) setMessage(null)
   }
 
+  const handlePlanTypeChange = (value: 'normal' | 'call') => {
+    setFormData(prev => ({
+      ...prev,
+      type: value,
+      can_view_details: value === 'normal' ? true : false,
+      can_make_calls: value === 'call' ? true : false
+    }))
+  }
+
   const openDialog = (type: 'create' | 'edit' | 'delete', plan?: Plan) => {
     if (type === 'edit' && plan) {
       setFormData({
         name: plan.name,
         price: plan.price.toString(),
         duration_months: plan.duration_months.toString(),
+        call_credits: plan.call_credits?.toString() || "",
         features: plan.features || "",
         description: plan.description || "",
+        type: plan.type,
+        can_view_details: plan.can_view_details,
+        can_make_calls: plan.can_make_calls,
         is_active: plan.is_active
       })
     } else {
@@ -138,6 +168,15 @@ export default function AdminPlansManagement() {
       return false
     }
 
+    // Validate call credits for call plans
+    if (formData.type === 'call') {
+      const callCredits = parseInt(formData.call_credits)
+      if (isNaN(callCredits) || callCredits <= 0) {
+        setMessage({ type: 'error', text: 'Valid call credits are required for call plans' })
+        return false
+      }
+    }
+
     return true
   }
 
@@ -156,20 +195,41 @@ export default function AdminPlansManagement() {
       
       const method = dialog.type === 'edit' ? 'PUT' : 'POST'
 
+      const requestData: {
+        name: string
+        price: number
+        duration_months: number
+        features: string | null
+        description: string | null
+        type: 'normal' | 'call'
+        can_view_details: boolean
+        can_make_calls: boolean
+        is_active: boolean
+        call_credits?: number
+      } = {
+        name: formData.name.trim(),
+        price: parseFloat(formData.price),
+        duration_months: parseInt(formData.duration_months),
+        features: formData.features.trim() || null,
+        description: formData.description.trim() || null,
+        type: formData.type,
+        can_view_details: formData.can_view_details,
+        can_make_calls: formData.can_make_calls,
+        is_active: formData.is_active
+      }
+
+      // Add call_credits only for call plans
+      if (formData.type === 'call') {
+        requestData.call_credits = parseInt(formData.call_credits)
+      }
+
       const response = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          name: formData.name.trim(),
-          price: parseFloat(formData.price),
-          duration_months: parseInt(formData.duration_months),
-          features: formData.features.trim() || null,
-          description: formData.description.trim() || null,
-          is_active: formData.is_active
-        }),
+        body: JSON.stringify(requestData),
       })
 
       if (response.ok) {
@@ -297,6 +357,19 @@ export default function AdminPlansManagement() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
                           <h3 className="text-base font-semibold truncate">{plan.name}</h3>
+                          <Badge variant={plan.type === 'call' ? 'default' : 'secondary'} className="text-xs">
+                            {plan.type === 'call' ? (
+                              <>
+                                <Phone className="h-3 w-3 mr-1" />
+                                Call Plan
+                              </>
+                            ) : (
+                              <>
+                                <Users className="h-3 w-3 mr-1" />
+                                Normal Plan
+                              </>
+                            )}
+                          </Badge>
                           <Badge variant={plan.is_active ? 'default' : 'secondary'} className="text-xs">
                             {plan.is_active ? (
                               <>
@@ -321,6 +394,14 @@ export default function AdminPlansManagement() {
                             <Calendar className="h-3 w-3" />
                             <span>{plan.duration_months} month{plan.duration_months > 1 ? 's' : ''}</span>
                           </div>
+                          {plan.type === 'call' && plan.call_credits && (
+                            <>
+                              <div className="flex items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                <span>{plan.call_credits} credits</span>
+                              </div>
+                            </>
+                          )}
                         </div>
 
                         {plan.description && (
@@ -384,6 +465,19 @@ export default function AdminPlansManagement() {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-lg font-semibold">{plan.name}</h3>
+                        <Badge variant={plan.type === 'call' ? 'default' : 'secondary'}>
+                          {plan.type === 'call' ? (
+                            <>
+                              <Phone className="h-3 w-3 mr-1" />
+                              Call Plan
+                            </>
+                          ) : (
+                            <>
+                              <Users className="h-3 w-3 mr-1" />
+                              Normal Plan
+                            </>
+                          )}
+                        </Badge>
                         <Badge variant={plan.is_active ? 'default' : 'secondary'}>
                           {plan.is_active ? (
                             <>
@@ -408,6 +502,12 @@ export default function AdminPlansManagement() {
                           <Calendar className="h-4 w-4" />
                           <span>{plan.duration_months} month{plan.duration_months > 1 ? 's' : ''}</span>
                         </div>
+                        {plan.type === 'call' && plan.call_credits && (
+                          <div className="flex items-center gap-1">
+                            <Phone className="h-4 w-4" />
+                            <span>{plan.call_credits} credits</span>
+                          </div>
+                        )}
                       </div>
 
                       {plan.description && (
@@ -491,6 +591,38 @@ export default function AdminPlansManagement() {
               </Alert>
             )}
 
+            {/* Plan Type Selection */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Plan Type *</Label>
+              <RadioGroup 
+                value={formData.type} 
+                onValueChange={handlePlanTypeChange}
+                disabled={isSubmitting}
+                className="grid grid-cols-2 gap-4"
+              >
+                <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-gray-50">
+                  <RadioGroupItem value="normal" id="normal" />
+                  <Label htmlFor="normal" className="flex items-center gap-2 cursor-pointer">
+                    <Users className="h-4 w-4 text-blue-500" />
+                    <div>
+                      <div className="font-medium">Normal Plan</div>
+                      <div className="text-xs text-gray-500">Profile viewing and matching</div>
+                    </div>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-gray-50">
+                  <RadioGroupItem value="call" id="call" />
+                  <Label htmlFor="call" className="flex items-center gap-2 cursor-pointer">
+                    <Phone className="h-4 w-4 text-green-500" />
+                    <div>
+                      <div className="font-medium">Call Plan</div>
+                      <div className="text-xs text-gray-500">Voice calling with credits</div>
+                    </div>
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="plan-name" className="text-sm">Plan Name *</Label>
@@ -536,6 +668,24 @@ export default function AdminPlansManagement() {
                 />
               </div>
 
+              {/* Call Credits field - only shown for call plans */}
+              {formData.type === 'call' && (
+                <div className="space-y-2">
+                  <Label htmlFor="call-credits" className="text-sm">Call Credits *</Label>
+                  <Input
+                    id="call-credits"
+                    type="number"
+                    min="1"
+                    value={formData.call_credits}
+                    onChange={(e) => handleInputChange("call_credits", e.target.value)}
+                    placeholder="e.g., 150"
+                    required={formData.type === 'call'}
+                    disabled={isSubmitting}
+                    className="text-sm"
+                  />
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="plan-status" className="text-sm">Status</Label>
                 <div className="flex items-center space-x-2 pt-2">
@@ -552,8 +702,31 @@ export default function AdminPlansManagement() {
               </div>
             </div>
 
+            {/* Plan Features */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Plan Features</Label>
+              <div className="grid grid-cols-2 gap-4 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={formData.can_view_details}
+                    onCheckedChange={(checked) => handleInputChange("can_view_details", checked)}
+                    disabled={isSubmitting}
+                  />
+                  <Label className="text-sm">Can View Details</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={formData.can_make_calls}
+                    onCheckedChange={(checked) => handleInputChange("can_make_calls", checked)}
+                    disabled={isSubmitting}
+                  />
+                  <Label className="text-sm">Can Make Calls</Label>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="plan-features" className="text-sm">Features</Label>
+              <Label htmlFor="plan-features" className="text-sm">Features Description</Label>
               <Textarea
                 id="plan-features"
                 value={formData.features}
@@ -626,6 +799,9 @@ export default function AdminPlansManagement() {
               <h3 className="font-medium text-red-900 text-sm sm:text-base">{dialog.plan.name}</h3>
               <p className="text-xs sm:text-sm text-red-700">
                 ₹{dialog.plan.price} for {dialog.plan.duration_months} month{dialog.plan.duration_months > 1 ? 's' : ''}
+                {dialog.plan.type === 'call' && dialog.plan.call_credits && (
+                  <span> • {dialog.plan.call_credits} credits</span>
+                )}
               </p>
             </div>
           )}

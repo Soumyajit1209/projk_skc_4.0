@@ -34,7 +34,10 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { name, price, duration_months, features, description, is_active } = body
+    const { 
+      name, price, duration_months, call_credits, features, description, 
+      type, can_view_details, can_make_calls, is_active 
+    } = body
 
     const connection = await mysql.createConnection(dbConfig)
 
@@ -47,7 +50,7 @@ export async function PUT(
     }
 
     // Check if plan exists
-    const [existingPlan] = await connection.execute("SELECT id, name FROM plans WHERE id = ?", [planId])
+    const [existingPlan] = await connection.execute("SELECT id, name, type FROM plans WHERE id = ?", [planId])
     if ((existingPlan as any[]).length === 0) {
       await connection.end()
       return NextResponse.json({ error: "Plan not found" }, { status: 404 })
@@ -76,6 +79,18 @@ export async function PUT(
         return NextResponse.json({ error: "Duration must be greater than 0" }, { status: 400 })
       }
 
+      // Validate plan type
+      if (type && !['normal', 'call'].includes(type)) {
+        await connection.end()
+        return NextResponse.json({ error: "Plan type must be 'normal' or 'call'" }, { status: 400 })
+      }
+
+      // Validate call credits for call plans
+      if (type === 'call' && (!call_credits || call_credits <= 0)) {
+        await connection.end()
+        return NextResponse.json({ error: "Call credits are required for call plans" }, { status: 400 })
+      }
+
       // Check duplicate name
       const [duplicatePlan] = await connection.execute(
         "SELECT id FROM plans WHERE name = ? AND id != ?", 
@@ -88,15 +103,20 @@ export async function PUT(
 
       await connection.execute(
         `UPDATE plans SET 
-         name = ?, price = ?, duration_months = ?, features = ?, 
-         description = ?, is_active = ?, updated_at = NOW() 
+         name = ?, price = ?, duration_months = ?, call_credits = ?, features = ?, 
+         description = ?, type = ?, can_view_details = ?, can_make_calls = ?, 
+         is_active = ?, updated_at = NOW() 
          WHERE id = ?`,
         [
           name.trim(), 
           price, 
           duration_months, 
+          type === 'call' ? call_credits : null,
           features?.trim() || null, 
-          description?.trim() || null, 
+          description?.trim() || null,
+          type || 'normal',
+          can_view_details !== undefined ? can_view_details : true,
+          can_make_calls !== undefined ? can_make_calls : false,
           is_active !== undefined ? is_active : true, 
           planId
         ]
@@ -121,7 +141,7 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await context.params  // ✅ must await params
+    const { id } = await context.params
     const planId = parseInt(id)
 
     const authHeader = request.headers.get("authorization")

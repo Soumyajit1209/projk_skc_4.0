@@ -18,6 +18,16 @@ import {
   AlertTriangle, TrendingUp, Clock, Zap, Activity, RefreshCw, Settings, PhoneCall, CreditCard, Users
 } from "lucide-react"
 
+// Number formatting utility function
+const formatNumber = (num: number): string => {
+  if (num === null || num === undefined || isNaN(num)) return '0';
+  const numValue = typeof num === 'string' ? parseFloat(num) : num;
+  if (numValue > Number.MAX_SAFE_INTEGER) {
+    return 'Error: Number too large';
+  }
+  return Math.floor(numValue).toLocaleString('en-IN');
+};
+
 interface CallSubscription {
   id: number
   user_id: number
@@ -380,7 +390,7 @@ export default function CallSubscriptions() {
                   <span className="text-sm font-medium text-gray-600">Total Credits</span>
                   <Zap className="h-4 w-4 text-gray-400" />
                 </div>
-                <div className="text-2xl font-bold text-gray-900">{exotelCredit.total_credits.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-gray-900">{formatNumber(exotelCredit.total_credits)}</div>
                 <div className="text-xs text-gray-500 mt-1">Available</div>
               </CardContent>
             </Card>
@@ -390,11 +400,9 @@ export default function CallSubscriptions() {
                   <span className="text-sm font-medium text-gray-600">Used</span>
                   <TrendingUp className="h-4 w-4 text-gray-400" />
                 </div>
-                <div className="text-2xl font-bold text-gray-900">{exotelCredit.used_credits.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-gray-900">{formatNumber(exotelCredit.used_credits)}</div>
                 <Progress 
-
-
-value={Math.round((exotelCredit.used_credits / exotelCredit.total_credits) * 100)} 
+                  value={Math.round((exotelCredit.used_credits / exotelCredit.total_credits) * 100)} 
                   className="mt-2 h-1"
                 />
               </CardContent>
@@ -405,7 +413,7 @@ value={Math.round((exotelCredit.used_credits / exotelCredit.total_credits) * 100
                   <span className="text-sm font-medium text-gray-600">Remaining</span>
                   <Activity className="h-4 w-4 text-gray-400" />
                 </div>
-                <div className="text-2xl font-bold text-gray-900">{exotelCredit.remaining_credits.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-gray-900">{formatNumber(exotelCredit.remaining_credits)}</div>
                 <div className="text-xs text-gray-500 mt-1">Credits left</div>
               </CardContent>
             </Card>
@@ -415,7 +423,7 @@ value={Math.round((exotelCredit.used_credits / exotelCredit.total_credits) * 100
                   <span className="text-sm font-medium text-gray-600">Monthly</span>
                   <Clock className="h-4 w-4 text-gray-400" />
                 </div>
-                <div className="text-2xl font-bold text-gray-900">{exotelCredit.current_month_usage.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-gray-900">{formatNumber(exotelCredit.current_month_usage)}</div>
                 <Progress 
                   value={Math.round((exotelCredit.current_month_usage / exotelCredit.monthly_limit) * 100)} 
                   className="mt-2 h-1"
@@ -442,7 +450,7 @@ value={Math.round((exotelCredit.used_credits / exotelCredit.total_credits) * 100
                 className="whitespace-nowrap"
               >
                 <CreditCard className="h-4 w-4 mr-1" />
-                Subscriptions ({callSubscriptions.filter(s => s.payment_status === 'pending').length})
+                Subscriptions ({formatNumber(callSubscriptions.filter(s => s.payment_status === 'pending').length)})
               </Button>
               <Button
                 variant={activeTab === "distributions" ? "default" : "outline"}
@@ -471,7 +479,7 @@ value={Math.round((exotelCredit.used_credits / exotelCredit.total_credits) * 100
               <CreditCard className="h-4 w-4" />
               <span className="hidden lg:inline">Call Subscriptions</span>
               <span className="lg:hidden">Subscriptions</span>
-              ({callSubscriptions.filter(s => s.payment_status === 'pending').length})
+              ({formatNumber(callSubscriptions.filter(s => s.payment_status === 'pending').length)})
             </TabsTrigger>
             <TabsTrigger value="distributions" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -576,9 +584,9 @@ value={Math.round((exotelCredit.used_credits / exotelCredit.total_credits) * 100
                               <p className="text-sm text-gray-500 mb-2 truncate">{subscription.user_email}</p>
                               <div className="grid grid-cols-2 gap-1 text-xs text-gray-500 mb-2">
                                 <span>{subscription.plan_name}</span>
-                                <span>₹{subscription.amount_paid}</span>
-                                <span>{subscription.credits_remaining}/{subscription.credits_purchased} credits</span>
-                                <span>{subscription.total_calls_made} calls</span>
+                                <span>₹{formatNumber(subscription.amount_paid)}</span>
+                                <span>{formatNumber(subscription.credits_remaining)}/{formatNumber(subscription.credits_purchased)} credits</span>
+                                <span>{formatNumber(subscription.total_calls_made)} calls</span>
                               </div>
                               {subscription.expires_at && (
                                 <p className="text-xs text-gray-500 mb-2">
@@ -692,9 +700,9 @@ value={Math.round((exotelCredit.used_credits / exotelCredit.total_credits) * 100
                               <p className="text-sm text-gray-500 truncate mb-1">{subscription.user_email}</p>
                               <div className="flex items-center gap-4 text-sm text-gray-500">
                                 <span>{subscription.plan_name}</span>
-                                <span>₹{subscription.amount_paid}</span>
-                                <span>{subscription.credits_remaining}/{subscription.credits_purchased} credits</span>
-                                <span className="hidden lg:inline">{subscription.total_calls_made} calls</span>
+                                <span>₹{formatNumber(subscription.amount_paid)}</span>
+                                <span>{formatNumber(subscription.credits_remaining)}/{formatNumber(subscription.credits_purchased)} credits</span>
+                                <span className="hidden lg:inline">{formatNumber(subscription.total_calls_made)} calls</span>
                                 <span className="hidden xl:inline">{formatDuration(subscription.total_call_duration)}</span>
                               </div>
                               {subscription.expires_at && (
@@ -829,9 +837,9 @@ value={Math.round((exotelCredit.used_credits / exotelCredit.total_credits) * 100
                               </Badge>
                             </div>
                             <div className="flex items-center gap-4 text-sm text-gray-500">
-                              <span>Allocated: {distribution.allocated_credits}</span>
-                              <span>Used: {distribution.used_credits}</span>
-                              <span>Remaining: {distribution.remaining_credits}</span>
+                              <span>Allocated: {formatNumber(distribution.allocated_credits)}</span>
+                              <span>Used: {formatNumber(distribution.used_credits)}</span>
+                              <span>Remaining: {formatNumber(distribution.remaining_credits)}</span>
                               <span className="hidden lg:inline">Last Call: {formatDate(distribution.last_call)}</span>
                             </div>
                           </div>
@@ -878,8 +886,8 @@ value={Math.round((exotelCredit.used_credits / exotelCredit.total_credits) * 100
                     <CreditCard className="h-4 w-4 text-gray-400" />
                   </div>
                   <div className="text-2xl font-bold text-gray-900">
-                    ₹{callSubscriptions.filter(s => s.payment_status === 'verified')
-                      .reduce((sum, s) => sum + s.amount_paid, 0).toLocaleString()}
+                    ₹{formatNumber(callSubscriptions.filter(s => s.payment_status === 'verified')
+                      .reduce((sum, s) => sum + s.amount_paid, 0))}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">From call plans</p>
                 </CardContent>
@@ -891,7 +899,7 @@ value={Math.round((exotelCredit.used_credits / exotelCredit.total_credits) * 100
                     <Users className="h-4 w-4 text-gray-400" />
                   </div>
                   <div className="text-2xl font-bold text-gray-900">
-                    {callSubscriptions.filter(s => s.is_active && new Date(s.expires_at) > new Date()).length}
+                    {formatNumber(callSubscriptions.filter(s => s.is_active && new Date(s.expires_at) > new Date()).length)}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">Currently active</p>
                 </CardContent>
@@ -903,7 +911,7 @@ value={Math.round((exotelCredit.used_credits / exotelCredit.total_credits) * 100
                     <PhoneCall className="h-4 w-4 text-gray-400" />
                   </div>
                   <div className="text-2xl font-bold text-gray-900">
-                    {callSubscriptions.reduce((sum, s) => sum + s.total_calls_made, 0)}
+                    {formatNumber(callSubscriptions.reduce((sum, s) => sum + s.total_calls_made, 0))}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">All time</p>
                 </CardContent>
@@ -943,8 +951,8 @@ value={Math.round((exotelCredit.used_credits / exotelCredit.total_credits) * 100
                   <h3 className="font-medium text-gray-900">{verifyDialog.subscription.user_name}</h3>
                   <p className="text-sm text-gray-600">{verifyDialog.subscription.user_email}</p>
                   <div className="mt-2 space-y-1 text-sm text-gray-500">
-                    <p>Plan: {verifyDialog.subscription.plan_name} - ₹{verifyDialog.subscription.amount_paid}</p>
-                    <p>Credits: {verifyDialog.subscription.credits_purchased}</p>
+                    <p>Plan: {verifyDialog.subscription.plan_name} - ₹{formatNumber(verifyDialog.subscription.amount_paid)}</p>
+                    <p>Credits: {formatNumber(verifyDialog.subscription.credits_purchased)}</p>
                     <p>Transaction: {verifyDialog.subscription.transaction_id}</p>
                   </div>
                 </div>
@@ -1007,7 +1015,7 @@ value={Math.round((exotelCredit.used_credits / exotelCredit.total_credits) * 100
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-gray-900">Current Credits:</span>
-                  <span className="text-lg font-bold text-gray-900">{creditDialog.currentCredits}</span>
+                  <span className="text-lg font-bold text-gray-900">{formatNumber(creditDialog.currentCredits)}</span>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-2">
@@ -1069,12 +1077,13 @@ value={Math.round((exotelCredit.used_credits / exotelCredit.total_credits) * 100
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-gray-900">Result:</span>
                     <span className="text-lg font-bold text-gray-900">
-                      {creditDialog.action === 'add' 
-                        ? creditDialog.currentCredits + parseInt(creditDialog.newCredits || '0')
-                        : creditDialog.action === 'remove'
-                        ? Math.max(0, creditDialog.currentCredits - parseInt(creditDialog.newCredits || '0'))
-                        : parseInt(creditDialog.newCredits || '0')
-                      } credits
+                      {formatNumber(
+                        creditDialog.action === 'add' 
+                          ? creditDialog.currentCredits + parseInt(creditDialog.newCredits || '0')
+                          : creditDialog.action === 'remove'
+                          ? Math.max(0, creditDialog.currentCredits - parseInt(creditDialog.newCredits || '0'))
+                          : parseInt(creditDialog.newCredits || '0')
+                      )} credits
                     </span>
                   </div>
                 </div>
@@ -1165,15 +1174,15 @@ value={Math.round((exotelCredit.used_credits / exotelCredit.total_credits) * 100
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Total Credits:</span>
-                      <span className="font-medium text-gray-900">{exotelCredit.total_credits}</span>
+                      <span className="font-medium text-gray-900">{formatNumber(exotelCredit.total_credits)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Cost/Min:</span>
-                      <span className="font-medium text-gray-900">₹{exotelCredit.cost_per_minute}</span>
+                      <span className="font-medium text-gray-900">₹{exotelCredit.cost_per_minute.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Monthly Limit:</span>
-                      <span className="font-medium text-gray-900">{exotelCredit.monthly_limit}</span>
+                      <span className="font-medium text-gray-900">{formatNumber(exotelCredit.monthly_limit)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Last Updated:</span>

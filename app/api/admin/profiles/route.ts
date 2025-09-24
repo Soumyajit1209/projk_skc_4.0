@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     const [rows] = await connection.execute(`
       SELECT 
         up.*,
-        u.name, u.email, u.phone, u.recovery_password,
+        u.name, u.email, u.phone, u.recovery_password, u.status as user_status,
         CASE WHEN ns.id IS NOT NULL THEN 1 ELSE 0 END as has_normal_plan,
         CASE WHEN cc.id IS NOT NULL THEN 1 ELSE 0 END as has_call_plan,
         COALESCE(cc.credits_remaining, 0) as call_credits_remaining,
@@ -73,6 +73,7 @@ export async function GET(request: NextRequest) {
       rejection_reason: row.rejection_reason,
       created_at: row.created_at,
       updated_at: row.updated_at,
+      user_status: row.user_status, // Include user status (active, inactive, banned)
       has_normal_plan: row.has_normal_plan === 1,
       has_call_plan: row.has_call_plan === 1,
       call_credits_remaining: row.call_credits_remaining || 0,
