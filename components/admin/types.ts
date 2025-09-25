@@ -22,7 +22,7 @@ export interface UserProfile {
   about_me?: string
   partner_preferences?: string
   profile_photo: string
-  status: "pending" | "approved" | "rejected"
+  status: "pending" | "approved" | "rejected" | "incomplete_registration" 
   rejection_reason?: string
   created_at: string
   updated_at?: string

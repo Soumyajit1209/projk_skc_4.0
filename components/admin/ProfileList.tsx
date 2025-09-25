@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Eye, CheckCircle, XCircle, Ban, Heart, Calendar, MapPin, MoreVertical, Users, UserCheck } from "lucide-react"
+import { Eye, CheckCircle, XCircle, Ban, Heart, Calendar, MapPin, MoreVertical, Users, UserCheck, AlertTriangle, Phone, Mail, Key } from "lucide-react"
 import { UserProfile } from "./types"
 import {
   DropdownMenu,
@@ -37,23 +37,63 @@ export default function ProfileList({
 }: ProfileListProps) {
   // Helper function to get user status from the user object
   const getUserStatus = (profile: UserProfile) => {
-    return (profile as any).user_status || 'active'; // Fallback to 'active' if not provided
+    return (profile as any).user_status || 'active';
+  }
+
+  // Helper function to check if this is an incomplete registration
+  const isIncompleteRegistration = (profile: UserProfile) => {
+    return (profile as any).is_incomplete_registration === true || profile.status === 'incomplete_registration';
+  }
+
+  // Helper function to get appropriate badge variant for status
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case "approved":
+        return "default"
+      case "rejected":
+        return "destructive"
+      case "incomplete_registration":
+        return "outline"
+      default:
+        return "secondary"
+    }
+  }
+
+  // Helper function to get status display text
+  const getStatusDisplay = (status: string) => {
+    switch (status) {
+      case "incomplete_registration":
+        return "Not Completed"
+      case "approved":
+        return "Approved"
+      case "rejected":
+        return "Rejected"
+      case "pending":
+        return "Pending"
+      default:
+        return status
+    }
   }
 
   return (
     <Card>
       <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
-        <CardTitle className="text-base sm:text-lg">User Profiles</CardTitle>
+        <CardTitle className="text-base sm:text-lg">All User Registrations</CardTitle>
+        <p className="text-sm text-gray-600">Manage complete profiles and incomplete registrations</p>
       </CardHeader>
       <CardContent className="px-3 sm:px-6 pb-4 sm:pb-6">
         <div className="space-y-3 sm:space-y-4">
           {profiles.map((profile) => {
             const userStatus = getUserStatus(profile);
+            const isIncomplete = isIncompleteRegistration(profile);
+            
             return (
               <div
                 key={profile.id}
                 className={`border rounded-lg hover:bg-gray-50 transition-colors ${
                   userStatus === 'banned' ? 'border-red-200 bg-red-50' : ''
+                } ${
+                  isIncomplete ? 'border-orange-200 bg-orange-50' : ''
                 }`}
               >
                 {/* Mobile Layout */}
@@ -61,24 +101,31 @@ export default function ProfileList({
                   <div className="flex items-start gap-3 mb-3">
                     <Avatar className="h-12 w-12 flex-shrink-0">
                       <AvatarImage src={profile.profile_photo || "/placeholder.svg"} />
-                      <AvatarFallback>{profile.name?.charAt(0) || '?'}</AvatarFallback>
+                      <AvatarFallback>
+                        {isIncomplete ? (
+                          <AlertTriangle className="h-6 w-6 text-orange-500" />
+                        ) : (
+                          profile.name?.charAt(0) || '?'
+                        )}
+                      </AvatarFallback>
                     </Avatar>
                     
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-medium truncate text-sm">{profile.name || 'Unknown User'}</h3>
+                        <h3 className="font-medium truncate text-sm">
+                          {profile.name || 'Unknown User'}
+                          {isIncomplete && (
+                            <span className="ml-1 text-orange-500">
+                              (Incomplete)
+                            </span>
+                          )}
+                        </h3>
                         <div className="flex gap-1">
                           <Badge
-                            variant={
-                              profile.status === "approved"
-                                ? "default"
-                                : profile.status === "rejected"
-                                  ? "destructive"
-                                  : "secondary"
-                            }
+                            variant={getStatusBadgeVariant(profile.status)}
                             className="text-xs"
                           >
-                            {profile.status}
+                            {getStatusDisplay(profile.status)}
                           </Badge>
                           {userStatus === 'banned' && (
                             <Badge variant="destructive" className="text-xs">
@@ -88,24 +135,55 @@ export default function ProfileList({
                         </div>
                       </div>
                       
-                      <p className="text-xs text-gray-600 truncate mb-2">{profile.email}</p>
-                      
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 mb-2">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {profile.age}y
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {profile.city}
-                        </span>
-                        <span>{profile.gender}</span>
-                        <span>{profile.caste}</span>
+                      {/* Contact Information - More prominent for incomplete registrations */}
+                      <div className="space-y-1 mb-2">
+                        <div className="flex items-center gap-2 text-xs text-gray-600">
+                          <Mail className="h-3 w-3" />
+                          <span className="truncate">{profile.email}</span>
+                        </div>
+                        
+                        {profile.phone && (
+                          <div className="flex items-center gap-2 text-xs text-gray-600">
+                            <Phone className="h-3 w-3" />
+                            <span>{profile.phone}</span>
+                          </div>
+                        )}
+                        
+                        {(profile as any).recovery_password && (
+                          <div className="flex items-center gap-2 text-xs text-gray-600">
+                            <Key className="h-3 w-3" />
+                            <span className="font-mono bg-gray-100 px-2 py-1 rounded">
+                              {(profile as any).recovery_password}
+                            </span>
+                          </div>
+                        )}
                       </div>
+                      
+                      {/* Profile Details - Only show if profile is complete */}
+                      {!isIncomplete && (
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 mb-2">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {profile.age}y
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {profile.city}
+                          </span>
+                          <span>{profile.gender}</span>
+                          <span>{profile.caste}</span>
+                        </div>
+                      )}
                       
                       {profile.status === "rejected" && profile.rejection_reason && (
                         <p className="text-xs text-red-600 mt-2 bg-red-50 p-2 rounded">
                           Reason: {profile.rejection_reason}
+                        </p>
+                      )}
+                      
+                      {isIncomplete && (
+                        <p className="text-xs text-orange-600 mt-2 bg-orange-50 p-2 rounded">
+                          User registered but hasn't completed their profile yet
                         </p>
                       )}
                     </div>
@@ -123,7 +201,7 @@ export default function ProfileList({
                       View
                     </Button>
 
-                    {profile.status === "pending" && userStatus !== 'banned' && (
+                    {profile.status === "pending" && userStatus !== 'banned' && !isIncomplete && (
                       <>
                         <Button
                           variant="default"
@@ -160,7 +238,7 @@ export default function ProfileList({
                       </>
                     )}
 
-                    {profile.status === "approved" && userStatus !== 'banned' && (
+                    {profile.status === "approved" && userStatus !== 'banned' && !isIncomplete && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -205,22 +283,29 @@ export default function ProfileList({
                   <div className="flex items-center gap-4 flex-1 min-w-0">
                     <Avatar className="h-12 w-12 flex-shrink-0">
                       <AvatarImage src={profile.profile_photo || "/placeholder.svg"} />
-                      <AvatarFallback>{profile.name?.charAt(0) || '?'}</AvatarFallback>
+                      <AvatarFallback>
+                        {isIncomplete ? (
+                          <AlertTriangle className="h-6 w-6 text-orange-500" />
+                        ) : (
+                          profile.name?.charAt(0) || '?'
+                        )}
+                      </AvatarFallback>
                     </Avatar>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium truncate">{profile.name || 'Unknown User'}</h3>
+                        <h3 className="font-medium truncate">
+                          {profile.name || 'Unknown User'}
+                          {isIncomplete && (
+                            <span className="ml-2 text-orange-500 text-sm">
+                              (Incomplete Registration)
+                            </span>
+                          )}
+                        </h3>
                         <Badge
-                          variant={
-                            profile.status === "approved"
-                              ? "default"
-                              : profile.status === "rejected"
-                                ? "destructive"
-                                : "secondary"
-                          }
+                          variant={getStatusBadgeVariant(profile.status)}
                         >
-                          {profile.status}
+                          {getStatusDisplay(profile.status)}
                         </Badge>
                         {userStatus === 'banned' && (
                           <Badge variant="destructive">
@@ -229,24 +314,53 @@ export default function ProfileList({
                         )}
                       </div>
                       
-                      <p className="text-sm text-gray-600 truncate mb-1">{profile.email}</p>
-                      
-                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                      {/* Contact Information */}
+                      <div className="flex items-center gap-4 text-sm text-gray-600 mb-1">
                         <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {profile.age} years
+                          <Mail className="h-3 w-3" />
+                          {profile.email}
                         </span>
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {profile.city}, {profile.state}
-                        </span>
-                        <span className="hidden lg:inline">{profile.caste}</span>
-                        <span className="hidden lg:inline">{profile.occupation}</span>
-                        <span>{profile.gender}</span>
+                        {profile.phone && (
+                          <span className="flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            {profile.phone}
+                          </span>
+                        )}
+                        {(profile as any).recovery_password && (
+                          <span className="flex items-center gap-1">
+                            <Key className="h-3 w-3" />
+                            <code className="bg-gray-100 px-2 py-1 rounded text-xs">
+                              {(profile as any).recovery_password}
+                            </code>
+                          </span>
+                        )}
                       </div>
+                      
+                      {/* Profile Details - Only for complete profiles */}
+                      {!isIncomplete && (
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {profile.age} years
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {profile.city}, {profile.state}
+                          </span>
+                          <span className="hidden lg:inline">{profile.caste}</span>
+                          <span className="hidden lg:inline">{profile.occupation}</span>
+                          <span>{profile.gender}</span>
+                        </div>
+                      )}
                       
                       {profile.status === "rejected" && profile.rejection_reason && (
                         <p className="text-sm text-red-600 mt-1">Reason: {profile.rejection_reason}</p>
+                      )}
+                      
+                      {isIncomplete && (
+                        <p className="text-sm text-orange-600 mt-1">
+                          Registered on {new Date((profile as any).user_created_at).toLocaleDateString()} but profile not completed
+                        </p>
                       )}
                     </div>
                   </div>
@@ -262,7 +376,7 @@ export default function ProfileList({
                       <span className="hidden lg:inline">View</span>
                     </Button>
 
-                    {profile.status === "pending" && userStatus !== 'banned' && (
+                    {profile.status === "pending" && userStatus !== 'banned' && !isIncomplete && (
                       <>
                         <Button
                           variant="default"
@@ -299,7 +413,7 @@ export default function ProfileList({
                       </>
                     )}
 
-                    {profile.status === "approved" && userStatus !== 'banned' && (
+                    {profile.status === "approved" && userStatus !== 'banned' && !isIncomplete && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -324,7 +438,7 @@ export default function ProfileList({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {profile.status === "pending" && userStatus !== 'banned' && (
+                          {profile.status === "pending" && userStatus !== 'banned' && !isIncomplete && (
                             <>
                               <DropdownMenuItem
                                 onClick={() =>
@@ -354,7 +468,7 @@ export default function ProfileList({
                               </DropdownMenuItem>
                             </>
                           )}
-                          {profile.status === "approved" && userStatus !== 'banned' && (
+                          {profile.status === "approved" && userStatus !== 'banned' && !isIncomplete && (
                             <DropdownMenuItem
                               onClick={() => {
                                 setSelectedUserId(profile.user_id)
@@ -417,8 +531,8 @@ export default function ProfileList({
           {profiles.length === 0 && (
             <div className="text-center py-8 text-gray-500">
               <Users className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-              <h3 className="text-lg font-medium mb-2">No profiles found</h3>
-              <p className="text-sm">No profiles match your current filters</p>
+              <h3 className="text-lg font-medium mb-2">No registrations found</h3>
+              <p className="text-sm">No users match your current filters</p>
             </div>
           )}
         </div>

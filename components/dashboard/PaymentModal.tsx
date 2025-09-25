@@ -57,18 +57,18 @@ export default function PaymentModal({ open, onOpenChange, selectedPlan, onPayme
             </div>
             <div className="space-y-3">
               <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                {/* <div>
+                <div>
                   <p className="font-medium text-sm text-blue-900">UPI ID</p>
-                  <p className="text-sm text-blue-700 font-mono">6291124710@sbi</p>
-                </div> */}
-                {/* <Button
+                  <p className="text-sm text-blue-700 font-mono">msmbinfotech1@sbi</p>
+                </div>
+                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => copyToClipboard("6291124710@sbi")}
+                  onClick={() => copyToClipboard("msmbinfotech1@sbi")}
                   className="text-blue-600 hover:text-blue-700 hover:bg-blue-100"
                 >
                   <Copy className="h-4 w-4" />
-                </Button> */}
+                </Button>
               </div>
               <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
                 <div>

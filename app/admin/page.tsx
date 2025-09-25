@@ -105,44 +105,64 @@ export default function AdminPage() {
     }
   }, [user, loading])
 
-  useEffect(() => {
-    let filtered = profiles
+useEffect(() => {
+  let filtered = profiles
 
-    if (filters.search) {
-      filtered = filtered.filter(
-        (profile) =>
-          profile.name &&
-          (profile.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-            profile.email.toLowerCase().includes(filters.search.toLowerCase()))
-      )
-    }
+  if (filters.search) {
+    filtered = filtered.filter(
+      (profile) =>
+        profile.name &&
+        (profile.name.toLowerCase().includes(filters.search.toLowerCase()) ||
+          profile.email.toLowerCase().includes(filters.search.toLowerCase()))
+    )
+  }
 
-    if (filters.caste && filters.caste !== "all") {
-      filtered = filtered.filter((profile) => profile.caste === filters.caste)
-    }
+  if (filters.status && filters.status !== "all") {
+    filtered = filtered.filter((profile) => profile.status === filters.status)
+  }
 
-    if (filters.ageMin) {
-      filtered = filtered.filter((profile) => profile.age >= Number.parseInt(filters.ageMin))
-    }
+  if (filters.caste && filters.caste !== "all") {
+    // Only filter by caste for complete profiles (incomplete registrations don't have caste)
+    filtered = filtered.filter((profile) => {
+      if (profile.status === 'incomplete_registration') return false
+      return profile.caste === filters.caste
+    })
+  }
 
-    if (filters.ageMax) {
-      filtered = filtered.filter((profile) => profile.age <= Number.parseInt(filters.ageMax))
-    }
+  if (filters.ageMin) {
+    // Only filter by age for complete profiles
+    filtered = filtered.filter((profile) => {
+      if (profile.status === 'incomplete_registration') return false
+      return profile.age >= Number.parseInt(filters.ageMin)
+    })
+  }
 
-    if (filters.state && filters.state !== "all") {
-      filtered = filtered.filter((profile) => profile.state === filters.state)
-    }
+  if (filters.ageMax) {
+    // Only filter by age for complete profiles
+    filtered = filtered.filter((profile) => {
+      if (profile.status === 'incomplete_registration') return false
+      return profile.age <= Number.parseInt(filters.ageMax)
+    })
+  }
 
-    if (filters.gender && filters.gender !== "all") {
-      filtered = filtered.filter((profile) => profile.gender === filters.gender)
-    }
+  if (filters.state && filters.state !== "all") {
+    // Only filter by state for complete profiles
+    filtered = filtered.filter((profile) => {
+      if (profile.status === 'incomplete_registration') return false
+      return profile.state === filters.state
+    })
+  }
 
-    if (filters.status && filters.status !== "all") {
-      filtered = filtered.filter((profile) => profile.status === filters.status)
-    }
+  if (filters.gender && filters.gender !== "all") {
+    // Only filter by gender for complete profiles
+    filtered = filtered.filter((profile) => {
+      if (profile.status === 'incomplete_registration') return false
+      return profile.gender === filters.gender
+    })
+  }
 
-    setFilteredProfiles(filtered)
-  }, [filters, profiles])
+  setFilteredProfiles(filtered)
+}, [filters, profiles])
 
   const handleFetchMatches = async (userId: number) => {
     setLoadingMatches(true)
@@ -226,7 +246,7 @@ export default function AdminPage() {
             <AlertDescription className="text-sm">{error}</AlertDescription>
           </Alert>
         )}
-        <StatsCards stats={stats} />
+        {/* <StatsCards stats={stats} /> */}
 
         {/* Tabs - Responsive */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

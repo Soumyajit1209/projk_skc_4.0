@@ -100,6 +100,7 @@ export default function ProfileCard({
             </div>
           </div>
         )}
+        
 
         {/* Action buttons with modern styling */}
         <div className="grid grid-cols-1 gap-2">
@@ -137,3 +138,4 @@ export default function ProfileCard({
     </Card>
   );
 }
+
