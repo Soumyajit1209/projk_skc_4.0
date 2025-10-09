@@ -9,14 +9,28 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/components/auth-provider"
-import { ArrowLeft, Users, Mail, Phone, User, Lock, Eye, EyeOff } from "lucide-react"
-import Image from "next/image"
+import { ArrowLeft, Users, Mail, User, Lock, Eye, EyeOff } from "lucide-react"
+import ReactCountryFlag from "react-country-flag"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+const countryCodes = [
+  { code: "+1", countryCode: "US", country: "US" },
+  { code: "+44", countryCode: "GB", country: "UK" },
+  { code: "+91", countryCode: "IN", country: "IN" },
+]
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
+    countryCode: "+91",
     password: "",
     confirmPassword: "",
   })
@@ -51,10 +65,14 @@ export default function RegisterPage() {
       return "Phone number is required"
     }
 
-    // Phone validation
-    const phoneRegex = /^\+?[\d\s\-\(\)]{10,}$/
+    // Phone validation (only digits for the phone number part)
+    const phoneRegex = /^\d{10,}$/
     if (!phoneRegex.test(formData.phone.trim())) {
-      return "Please enter a valid phone number"
+      return "Please enter a valid phone number (at least 10 digits)"
+    }
+
+    if (!formData.countryCode) {
+      return "Please select a country code"
     }
 
     if (!formData.password) {
@@ -86,11 +104,14 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
+      // Concatenate country code and phone number without space
+      const fullPhoneNumber = `${formData.countryCode}${formData.phone.trim()}`
+
       const success = await register(
         formData.email.trim(), 
         formData.password, 
         formData.name.trim(),
-        formData.phone.trim(),
+        fullPhoneNumber,
       )
 
       if (success) {
@@ -120,8 +141,8 @@ export default function RegisterPage() {
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value
-    // Remove any non-digit characters except +, spaces, dashes, and parentheses
-    value = value.replace(/[^\d\+\s\-\(\)]/g, '')
+    // Allow only digits for phone number
+    value = value.replace(/[^\d]/g, '')
     
     setFormData((prev) => ({
       ...prev,
@@ -136,17 +157,6 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 to-pink-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-rose-600 hover:text-rose-700 mb-4 transition-colors">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Home
-          </Link>
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <Image src="/matchb-logo.png" alt="MatchB" width={120} height={40} className="h-10 w-auto" />
-          </div>
-          <p className="text-gray-600">Start your journey to find love</p>
-        </div>
-
         <Card className="shadow-xl border-0">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-3">
@@ -203,21 +213,46 @@ export default function RegisterPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
-                <div className="relative">
-                  <Input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    placeholder="Enter your phone number"
-                    value={formData.phone}
-                    onChange={handlePhoneChange}
-                    required
-                    className="h-11 pl-10"
+                <div className="relative flex items-center">
+                  <Select 
+                    value={formData.countryCode} 
+                    onValueChange={(value) => setFormData((prev) => ({ ...prev, countryCode: value }))}
                     disabled={loading}
-                  />
-                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  >
+                    <SelectTrigger className="w-[120px] mr-2">
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {countryCodes.map(({ code, countryCode, country }) => (
+                        <SelectItem key={code} value={code}>
+                          <div className="flex items-center">
+                            <ReactCountryFlag
+                              countryCode={countryCode}
+                              svg
+                              className="mr-2"
+                              style={{ width: "1.5em", height: "1.5em" }}
+                            />
+                            {code} {country}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="relative flex-1">
+                    <Input
+                      id="phone"
+                      name="phone"
+                      type="tel"
+                      placeholder="Enter phone number"
+                      value={formData.phone}
+                      onChange={handlePhoneChange}
+                      required
+                      className="h-11 pl-4"
+                      disabled={loading}
+                    />
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500">Include country code if international (e.g., +91 9876543210)</p>
+                <p className="text-xs text-gray-500">Enter phone number without country code</p>
               </div>
 
               <div className="space-y-2">
@@ -286,6 +321,13 @@ export default function RegisterPage() {
                   "Create Account"
                 )}
               </Button>
+
+              <div className="mt-1 text-center">
+                <Link href="/" className="inline-flex items-center gap-2 text-rose-600 hover:text-rose-700 transition-colors">
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Home
+                </Link>
+              </div>
             </form>
 
             <div className="mt-6 text-center">

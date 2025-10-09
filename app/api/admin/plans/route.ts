@@ -34,8 +34,9 @@ export async function GET(request: NextRequest) {
 
     // Get all plans including inactive ones for admin
     const [rows] = await connection.execute(
-      `SELECT id, name, price, duration_months, features, description, is_active, 
-       created_at, updated_at FROM plans ORDER BY created_at DESC`
+      `SELECT id, name, price, duration_months, call_credits, features, description, 
+       type, can_view_details, can_make_calls, is_active, created_at, updated_at 
+       FROM plans ORDER BY created_at DESC`
     )
 
     await connection.end()
@@ -58,7 +59,10 @@ export async function POST(request: NextRequest) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
-    const { name, price, duration_months, features, description, is_active = true } = await request.json()
+    const { 
+      name, price, duration_months, call_credits, features, description, 
+      type = 'normal', can_view_details = true, can_make_calls = false, is_active = true 
+    } = await request.json()
 
     // Validate inputs
     if (!name || !price || !duration_months) {
@@ -71,6 +75,16 @@ export async function POST(request: NextRequest) {
 
     if (duration_months <= 0) {
       return NextResponse.json({ error: "Duration must be greater than 0" }, { status: 400 })
+    }
+
+    // Validate plan type
+    if (!['normal', 'call'].includes(type)) {
+      return NextResponse.json({ error: "Plan type must be 'normal' or 'call'" }, { status: 400 })
+    }
+
+    // Validate call credits for call plans
+    if (type === 'call' && (!call_credits || call_credits <= 0)) {
+      return NextResponse.json({ error: "Call credits are required for call plans" }, { status: 400 })
     }
 
     const connection = await mysql.createConnection(dbConfig)
@@ -92,9 +106,22 @@ export async function POST(request: NextRequest) {
 
     // Create new plan
     const [result] = await connection.execute(
-      `INSERT INTO plans (name, price, duration_months, features, description, is_active, created_at) 
-       VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-      [name.trim(), price, duration_months, features?.trim() || null, description?.trim() || null, is_active]
+      `INSERT INTO plans (
+        name, price, duration_months, call_credits, features, description, 
+        type, can_view_details, can_make_calls, is_active, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [
+        name.trim(), 
+        price, 
+        duration_months, 
+        type === 'call' ? call_credits : null,
+        features?.trim() || null, 
+        description?.trim() || null,
+        type,
+        can_view_details,
+        can_make_calls,
+        is_active
+      ]
     )
 
     await connection.end()

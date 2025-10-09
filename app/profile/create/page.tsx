@@ -10,14 +10,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { FileUpload } from "@/components/file-upload"
-import { Heart} from "lucide-react"
+import { Heart, AlertCircle } from "lucide-react"
+
+interface ValidationErrors {
+  [key: string]: string
+}
 
 export default function CreateProfilePage() {
-  const { user, loading } = useAuth()
+  const { user, loading, updateProfileStatus } = useAuth()
   const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
   const [formData, setFormData] = useState({
     age: "",
     gender: "",
@@ -44,16 +49,105 @@ export default function CreateProfilePage() {
       router.push("/login")
       return
     }
-    
-    // If user already has a complete profile, redirect to dashboard
-    if (!loading && user && user.profileComplete) {
-      router.push("/dashboard")
-      return
-    }
   }, [user, loading, router])
+
+  const validateField = (field: string, value: string): string => {
+    switch (field) {
+      case 'age':
+        const ageNum = parseInt(value)
+        if (!value) return "Age is required"
+        if (isNaN(ageNum) || ageNum < 18 || ageNum > 80) return "Age must be between 18 and 80"
+        return ""
+      
+      case 'income':
+        if (value && !/^\d+(\.\d+)?(-\d+(\.\d+)?)?$/.test(value.trim())) {
+          return "Income should only contain numbers (e.g., 5, 5.5, 5-10)"
+        }
+        return ""
+      
+      case 'weight':
+        if (value && !/^\d+(\.\d+)?$/.test(value.trim())) {
+          return "Weight should only contain numbers (e.g., 65, 65.5)"
+        }
+        return ""
+      
+      case 'height':
+        if (value && !/^\d+(\.\d+)?$/.test(value.trim())) {
+          return "Height should only contain numbers (e.g., 5.6, 6.0)"
+        }
+        return ""
+      
+      case 'gender':
+        if (!value) return "Gender is required"
+        return ""
+      
+      case 'marital_status':
+        if (!value) return "Marital status is required"
+        return ""
+      
+      case 'religion':
+        if (!value) return "Religion is required"
+        return ""
+      
+      case 'caste':
+        if (!value.trim()) return "Caste is required"
+        return ""
+      
+      case 'education':
+        if (!value) return "Education is required"
+        return ""
+      
+      case 'occupation':
+        if (!value.trim()) return "Occupation is required"
+        return ""
+      
+      case 'state':
+        if (!value.trim()) return "State is required"
+        return ""
+      
+      case 'city':
+        if (!value.trim()) return "City is required"
+        return ""
+      
+      default:
+        return ""
+    }
+  }
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+    
+    // Clear validation error when user starts typing
+    if (validationErrors[field]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors[field]
+        return newErrors
+      })
+    }
+    
+    // For income, weight, height - validate on change
+    if (['income', 'weight', 'height'].includes(field)) {
+      const error = validateField(field, value)
+      if (error) {
+        setValidationErrors(prev => ({ ...prev, [field]: error }))
+      }
+    }
+  }
+
+  const validateForm = (): boolean => {
+    const errors: ValidationErrors = {}
+    
+    // Validate all required fields
+    Object.keys(formData).forEach(field => {
+      const error = validateField(field, formData[field as keyof typeof formData])
+      if (error) {
+        errors[field] = error
+      }
+    })
+    
+    setValidationErrors(errors)
+    return Object.keys(errors).length === 0
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,6 +155,13 @@ export default function CreateProfilePage() {
     setSubmitting(true)
     setError("")
     setSuccess(false)
+    
+    // Validate form before submission
+    if (!validateForm()) {
+      setSubmitting(false)
+      setError("Please fix the validation errors below")
+      return
+    }
 
     try {
       const token = localStorage.getItem("token")
@@ -72,14 +173,15 @@ export default function CreateProfilePage() {
         },
         body: JSON.stringify(formData),
       })
-      
+
       const data = await response.json()
       
       if (response.ok) {
         setSuccess(true)
+        updateProfileStatus(true)
         setTimeout(() => {
           router.push("/dashboard")
-        }, 1500)
+        }, 1000)
       } else {
         setError(data.error || "Failed to create profile")
       }
@@ -88,6 +190,10 @@ export default function CreateProfilePage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const handleGoToDashboard = () => {
+    router.push("/dashboard")
   }
 
   if (loading) {
@@ -102,7 +208,7 @@ export default function CreateProfilePage() {
   }
 
   if (!user) {
-    return null // Will redirect via useEffect
+    return null
   }
 
   return (
@@ -132,14 +238,14 @@ export default function CreateProfilePage() {
             
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded">
+                <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
                   {error}
                 </div>
               )}
 
-              {/* Grid layout compact */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Photo */}
+                {/* Profile Photo */}
                 <div className="col-span-1">
                   <Label>Profile Photo</Label>
                   <FileUpload
@@ -148,56 +254,110 @@ export default function CreateProfilePage() {
                   />
                 </div>
 
-                {/* Basic */}
+                {/* Age */}
                 <div>
-                  <Label>Age *</Label>
+                  <Label>Age * (Years)</Label>
                   <Input 
                     type="number" 
                     value={formData.age} 
                     onChange={(e) => handleInputChange("age", e.target.value)} 
-                    required 
                     min="18"
                     max="80"
+                    className={validationErrors.age ? "border-red-500" : ""}
                   />
+                  {validationErrors.age && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {validationErrors.age}
+                    </p>
+                  )}
                 </div>
+
+                {/* Gender */}
                 <div>
                   <Label>Gender *</Label>
                   <Select value={formData.gender} onValueChange={(v) => handleInputChange("gender", v)}>
-                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectTrigger className={validationErrors.gender ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Select Gender" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Male">Male</SelectItem>
                       <SelectItem value="Female">Female</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
                     </SelectContent>
                   </Select>
+                  {validationErrors.gender && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {validationErrors.gender}
+                    </p>
+                  )}
                 </div>
+
+                {/* Marital Status */}
                 <div>
                   <Label>Marital Status *</Label>
                   <Select value={formData.marital_status} onValueChange={(v) => handleInputChange("marital_status", v)}>
-                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectTrigger className={validationErrors.marital_status ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Select Status" />
+                    </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Never Married">Never Married</SelectItem>
+                      <SelectItem value="Never Married">Single</SelectItem>
+                      <SelectItem value="Married">Married</SelectItem>
                       <SelectItem value="Divorced">Divorced</SelectItem>
                       <SelectItem value="Widowed">Widowed</SelectItem>
                       <SelectItem value="Separated">Separated</SelectItem>
                     </SelectContent>
                   </Select>
+                  {validationErrors.marital_status && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {validationErrors.marital_status}
+                    </p>
+                  )}
                 </div>
 
-                {/* Physical */}
+                {/* Height */}
                 <div>
-                  <Label>Height (ft)</Label>
-                  <Input value={formData.height} onChange={(e) => handleInputChange("height", e.target.value)} placeholder="e.g., 5.6" />
+                  <Label>Height (feet)</Label>
+                  <Input 
+                    value={formData.height} 
+                    onChange={(e) => handleInputChange("height", e.target.value)} 
+                    placeholder="e.g., 5.6" 
+                    className={validationErrors.height ? "border-red-500" : ""}
+                  />
+                  {validationErrors.height && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {validationErrors.height}
+                    </p>
+                  )}
                 </div>
+
+                {/* Weight */}
                 <div>
                   <Label>Weight (kg)</Label>
-                  <Input value={formData.weight} onChange={(e) => handleInputChange("weight", e.target.value)} placeholder="e.g., 65" />
+                  <Input 
+                    value={formData.weight} 
+                    onChange={(e) => handleInputChange("weight", e.target.value)} 
+                    placeholder="e.g., 65" 
+                    className={validationErrors.weight ? "border-red-500" : ""}
+                  />
+                  {validationErrors.weight && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {validationErrors.weight}
+                    </p>
+                  )}
                 </div>
 
                 {/* Religion */}
                 <div>
                   <Label>Religion *</Label>
                   <Select value={formData.religion} onValueChange={(v) => handleInputChange("religion", v)}>
-                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectTrigger className={validationErrors.religion ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Select Religion" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Hindu">Hindu</SelectItem>
                       <SelectItem value="Muslim">Muslim</SelectItem>
@@ -208,22 +368,50 @@ export default function CreateProfilePage() {
                       <SelectItem value="Other">Other</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-                <div>
-                  <Label>Caste *</Label>
-                  <Input value={formData.caste} onChange={(e) => handleInputChange("caste", e.target.value)} required placeholder="Enter caste" />
-                </div>
-                <div>
-                  <Label>Mother Tongue</Label>
-                  <Input value={formData.mother_tongue} onChange={(e) => handleInputChange("mother_tongue", e.target.value)} placeholder="e.g., Hindi, Bengali" />
+                  {validationErrors.religion && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {validationErrors.religion}
+                    </p>
+                  )}
                 </div>
 
-                {/* Professional */}
+                {/* Caste */}
+                <div>
+                  <Label>Caste *</Label>
+                  <Input 
+                    value={formData.caste} 
+                    onChange={(e) => handleInputChange("caste", e.target.value)} 
+                    placeholder="Enter caste" 
+                    className={validationErrors.caste ? "border-red-500" : ""}
+                  />
+                  {validationErrors.caste && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {validationErrors.caste}
+                    </p>
+                  )}
+                </div>
+
+                {/* Mother Tongue */}
+                <div>
+                  <Label>Mother Tongue</Label>
+                  <Input 
+                    value={formData.mother_tongue} 
+                    onChange={(e) => handleInputChange("mother_tongue", e.target.value)} 
+                    placeholder="e.g., Hindi, Bengali" 
+                  />
+                </div>
+
+                {/* Education */}
                 <div>
                   <Label>Education *</Label>
                   <Select value={formData.education} onValueChange={(v) => handleInputChange("education", v)}>
-                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectTrigger className={validationErrors.education ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Select Education" />
+                    </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="Secondary(10th)">Secondary(10th)</SelectItem>
                       <SelectItem value="High School">High School</SelectItem>
                       <SelectItem value="Bachelor's">Bachelor's</SelectItem>
                       <SelectItem value="Master's">Master's</SelectItem>
@@ -232,41 +420,99 @@ export default function CreateProfilePage() {
                       <SelectItem value="Professional">Professional Degree</SelectItem>
                     </SelectContent>
                   </Select>
+                  {validationErrors.education && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {validationErrors.education}
+                    </p>
+                  )}
                 </div>
+
+                {/* Occupation */}
                 <div>
                   <Label>Occupation *</Label>
-                  <Input value={formData.occupation} onChange={(e) => handleInputChange("occupation", e.target.value)} required placeholder="e.g., Software Engineer" />
+                  <Input 
+                    value={formData.occupation} 
+                    onChange={(e) => handleInputChange("occupation", e.target.value)} 
+                    placeholder="e.g., Software Engineer" 
+                    className={validationErrors.occupation ? "border-red-500" : ""}
+                  />
+                  {validationErrors.occupation && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {validationErrors.occupation}
+                    </p>
+                  )}
                 </div>
+
+                {/* Income */}
                 <div>
                   <Label>Income (Lakhs per year)</Label>
-                  <Input value={formData.income} onChange={(e) => handleInputChange("income", e.target.value)} placeholder="e.g., 5-10" />
+                  <Input 
+                    value={formData.income} 
+                    onChange={(e) => handleInputChange("income", e.target.value)} 
+                    placeholder="e.g., 5 or 5-10" 
+                    className={validationErrors.income ? "border-red-500" : ""}
+                  />
+                  {validationErrors.income && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {validationErrors.income}
+                    </p>
+                  )}
                 </div>
 
-                {/* Location */}
+                {/* State */}
                 <div>
                   <Label>State *</Label>
-                  <Input value={formData.state} onChange={(e) => handleInputChange("state", e.target.value)} required placeholder="e.g., West Bengal" />
-                </div>
-                <div>
-                  <Label>City *</Label>
-                  <Input value={formData.city} onChange={(e) => handleInputChange("city", e.target.value)} required placeholder="e.g., Kolkata" />
+                  <Input 
+                    value={formData.state} 
+                    onChange={(e) => handleInputChange("state", e.target.value)} 
+                    placeholder="e.g., West Bengal" 
+                    className={validationErrors.state ? "border-red-500" : ""}
+                  />
+                  {validationErrors.state && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {validationErrors.state}
+                    </p>
+                  )}
                 </div>
 
-                {/* Family */}
+                {/* City */}
+                <div>
+                  <Label>City *</Label>
+                  <Input 
+                    value={formData.city} 
+                    onChange={(e) => handleInputChange("city", e.target.value)} 
+                    placeholder="e.g., Kolkata" 
+                    className={validationErrors.city ? "border-red-500" : ""}
+                  />
+                  {validationErrors.city && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {validationErrors.city}
+                    </p>
+                  )}
+                </div>
+
+                {/* Family Type */}
                 <div>
                   <Label>Family Type</Label>
                   <Select value={formData.family_type} onValueChange={(v) => handleInputChange("family_type", v)}>
-                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Select Type" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Nuclear">Nuclear</SelectItem>
                       <SelectItem value="Joint">Joint</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Family Status */}
                 <div>
                   <Label>Family Status</Label>
                   <Select value={formData.family_status} onValueChange={(v) => handleInputChange("family_status", v)}>
-                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Select Status" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Middle Class">Middle Class</SelectItem>
                       <SelectItem value="Upper Middle Class">Upper Middle Class</SelectItem>
@@ -277,7 +523,7 @@ export default function CreateProfilePage() {
                 </div>
               </div>
 
-              {/* Textareas in 2-cols */}
+              {/* Textareas */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label>About Me</Label>
@@ -304,8 +550,18 @@ export default function CreateProfilePage() {
                 className="w-full h-11 bg-rose-600 hover:bg-rose-700" 
                 disabled={submitting || success}
               >
-                {submitting ? "Creating Profile..." : success ? "Profile Created!" : "Create Profile"}
+                {submitting ? "Creating Profile..." : success ? "Profile Created! Redirecting..." : "Create Profile"}
               </Button>
+              
+              {success && (
+                <Button 
+                  type="button" 
+                  className="w-full h-11 bg-blue-600 hover:bg-blue-700 mt-2" 
+                  onClick={handleGoToDashboard}
+                >
+                  Go to Dashboard Now
+                </Button>
+              )}
             </form>
           </CardContent>
         </Card>

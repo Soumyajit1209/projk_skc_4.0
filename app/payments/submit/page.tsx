@@ -382,12 +382,8 @@ export default function PaymentSubmitPage() {
                   </p>
                   <div className="space-y-2">
                     <Button variant="outline" size="sm" className="w-full justify-start">
-                      <Mail className="h-4 w-4 mr-2" />
-                      support@matchb.com
-                    </Button>
-                    <Button variant="outline" size="sm" className="w-full justify-start">
                       <Phone className="h-4 w-4 mr-2" />
-                      +91 98765 43210
+                      +91 94770 27129
                     </Button>
                   </div>
                 </div>

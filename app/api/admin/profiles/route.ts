@@ -1,7 +1,6 @@
-// app/api/admin/profiles/route.ts
-import { type NextRequest, NextResponse } from "next/server"
-import mysql from "mysql2/promise"
-import jwt from "jsonwebtoken"
+import { type NextRequest, NextResponse } from "next/server";
+import mysql from "mysql2/promise";
+import jwt from "jsonwebtoken";
 
 const dbConfig = {
   host: process.env.DB_HOST,
@@ -9,111 +8,139 @@ const dbConfig = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: Number.parseInt(process.env.DB_PORT || "3306"),
-}
+};
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization")
-    const token = authHeader?.replace("Bearer ", "")
+    const authHeader = request.headers.get("authorization");
+    const token = authHeader?.replace("Bearer ", "");
 
     if (!token) {
-      return NextResponse.json({ error: "No token provided" }, { status: 401 })
+      return NextResponse.json({ error: "No token provided" }, { status: 401 });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any;
 
-    const { searchParams } = new URL(request.url)
-    const gender = searchParams.get("gender")
-    const ageMin = searchParams.get("ageMin")
-    const ageMax = searchParams.get("ageMax")
-    const caste = searchParams.get("caste")
-    const city = searchParams.get("city")
-    const state = searchParams.get("state")
-    const status = searchParams.get("status")
-
-    const connection = await mysql.createConnection(dbConfig)
-
-    // Verify admin role
-    const [adminRows] = await connection.execute("SELECT role FROM users WHERE id = ?", [decoded.userId])
-    const admin = (adminRows as any[])[0]
-    if (!admin || admin.role !== "admin") {
-      await connection.end()
-      return NextResponse.json({ error: "Access denied" }, { status: 403 })
+    if (decoded.role !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
     }
 
-    // Updated query to properly join users and user_profiles tables
-    let query = `
+    const connection = await mysql.createConnection(dbConfig);
+
+    // Updated query to include users without profiles (incomplete registrations)
+    const [rows] = await connection.execute(`
       SELECT 
-        p.id,
-        p.user_id,
-        u.name,
-        u.email,
-        u.phone,
-        p.age,
-        p.gender,
-        p.height,
-        p.weight,
-        p.caste,
-        p.religion,
-        p.mother_tongue,
-        p.marital_status,
-        p.education,
-        p.occupation,
-        p.income,
-        p.state,
-        p.city,
-        p.family_type,
-        p.family_status,
-        p.about_me,
-        p.partner_preferences,
-        p.profile_photo,
-        p.status,
-        p.rejection_reason,
-        p.created_at,
-        p.updated_at
-      FROM user_profiles p 
-      JOIN users u ON p.user_id = u.id 
+        u.id as user_id,
+        u.name, 
+        u.email, 
+        u.phone, 
+        u.recovery_password, 
+        u.status as user_status,
+        u.created_at as user_created_at,
+        
+        -- Profile data (will be NULL for incomplete registrations)
+        up.id as profile_id,
+        up.age,
+        up.gender,
+        up.height,
+        up.weight,
+        up.caste,
+        up.religion,
+        up.mother_tongue,
+        up.marital_status,
+        up.education,
+        up.occupation,
+        up.income,
+        up.state,
+        up.city,
+        up.family_type,
+        up.family_status,
+        up.about_me,
+        up.partner_preferences,
+        up.profile_photo,
+        up.status as profile_status,
+        up.rejection_reason,
+        up.created_at as profile_created_at,
+        up.updated_at as profile_updated_at,
+        
+        -- Subscription and plan info
+        CASE WHEN ns.id IS NOT NULL THEN 1 ELSE 0 END as has_normal_plan,
+        CASE WHEN cc.id IS NOT NULL THEN 1 ELSE 0 END as has_call_plan,
+        COALESCE(cc.credits_remaining, 0) as call_credits_remaining,
+        
+        -- Match count
+        (SELECT COUNT(*) FROM matches WHERE user_id = u.id OR matched_user_id = u.id) as total_matches,
+        
+        -- Profile completion status
+        CASE 
+          WHEN up.id IS NULL THEN 'incomplete_registration'
+          ELSE up.status 
+        END as computed_status
+        
+      FROM users u
+      LEFT JOIN user_profiles up ON up.user_id = u.id
+      LEFT JOIN user_subscriptions ns ON ns.user_id = u.id AND ns.status = 'active' AND ns.expires_at > NOW()
+      LEFT JOIN user_call_credits cc ON cc.user_id = u.id AND cc.credits_remaining > 0 AND cc.expires_at > NOW()
       WHERE u.role = 'user'
-    `
-    const params: any[] = []
+      ORDER BY 
+        CASE 
+          WHEN up.id IS NULL THEN 0  -- Incomplete registrations first
+          ELSE 1
+        END,
+        u.created_at DESC
+    `);
 
-    if (gender && gender !== 'all') {
-      query += " AND p.gender = ?"
-      params.push(gender)
-    }
-    if (ageMin) {
-      query += " AND p.age >= ?"
-      params.push(Number.parseInt(ageMin))
-    }
-    if (ageMax) {
-      query += " AND p.age <= ?"
-      params.push(Number.parseInt(ageMax))
-    }
-    if (caste && caste !== 'all') {
-      query += " AND p.caste = ?"
-      params.push(caste)
-    }
-    if (city && city !== 'all') {
-      query += " AND p.city = ?"
-      params.push(city)
-    }
-    if (state && state !== 'all') {
-      query += " AND p.state = ?"
-      params.push(state)
-    }
-    if (status && status !== 'all') {
-      query += " AND p.status = ?"
-      params.push(status)
-    }
+    await connection.end();
 
-    query += " ORDER BY p.created_at DESC"
+    const profiles = (rows as any[]).map((row) => ({
+      id: row.profile_id || `incomplete_${row.user_id}`, // Use special ID for incomplete profiles
+      user_id: row.user_id,
+      name: row.name,
+      email: row.email,
+      phone: row.phone,
+      recovery_password: row.recovery_password,
+      user_created_at: row.user_created_at,
+      
+      // Profile fields (may be null for incomplete registrations)
+      age: row.age,
+      gender: row.gender,
+      height: row.height,
+      weight: row.weight,
+      caste: row.caste,
+      religion: row.religion,
+      mother_tongue: row.mother_tongue,
+      marital_status: row.marital_status,
+      education: row.education,
+      occupation: row.occupation,
+      income: row.income,
+      state: row.state,
+      city: row.city,
+      family_type: row.family_type,
+      family_status: row.family_status,
+      about_me: row.about_me,
+      partner_preferences: row.partner_preferences,
+      profile_photo: row.profile_photo,
+      
+      // Status handling
+      status: row.computed_status,
+      rejection_reason: row.rejection_reason,
+      created_at: row.profile_created_at || row.user_created_at,
+      updated_at: row.profile_updated_at,
+      
+      // User status and additional info
+      user_status: row.user_status,
+      has_normal_plan: row.has_normal_plan === 1,
+      has_call_plan: row.has_call_plan === 1,
+      call_credits_remaining: row.call_credits_remaining || 0,
+      total_matches: row.total_matches || 0,
+      
+      // Flag to identify incomplete registrations
+      is_incomplete_registration: row.profile_id === null,
+    }));
 
-    const [rows] = await connection.execute(query, params)
-    await connection.end()
-
-    return NextResponse.json(rows)
+    return NextResponse.json(profiles);
   } catch (error) {
-    console.error("Admin profiles fetch error:", error)
-    return NextResponse.json({ error: "Failed to fetch profiles" }, { status: 500 })
+    console.error("Enhanced profiles error:", error);
+    return NextResponse.json({ error: "Failed to fetch enhanced profiles" }, { status: 500 });
   }
 }

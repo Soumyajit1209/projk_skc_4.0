@@ -1,6 +1,6 @@
-import { type NextRequest, NextResponse } from "next/server"
-import mysql from "mysql2/promise"
-import jwt from "jsonwebtoken"
+import { type NextRequest, NextResponse } from "next/server";
+import mysql from "mysql2/promise";
+import jwt from "jsonwebtoken";
 
 const dbConfig = {
   host: process.env.DB_HOST,
@@ -8,64 +8,101 @@ const dbConfig = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: Number.parseInt(process.env.DB_PORT || "3306"),
-}
+};
 
-// Get user's active plan
 export async function GET(request: NextRequest) {
+  const connection = await mysql.createConnection(dbConfig);
   try {
-    const authHeader = request.headers.get("authorization")
-    const token = authHeader?.replace("Bearer ", "")
+    const authHeader = request.headers.get("authorization");
+    const token = authHeader?.replace("Bearer ", "");
 
     if (!token) {
-      return NextResponse.json({ error: "No token provided" }, { status: 401 })
+      return NextResponse.json({ error: "No token provided" }, { status: 401 });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any;
 
-    const connection = await mysql.createConnection(dbConfig)
-
-    // Get user's most recent verified payment and plan
-    const [rows] = await connection.execute(`
-      SELECT 
-        p.id as payment_id,
-        p.status,
-        p.verified_at,
-        p.created_at as payment_date,
-        pl.name as plan_name,
-        pl.price,
-        pl.duration_months,
-        pl.features,
-        pl.description,
-        DATE_ADD(p.verified_at, INTERVAL pl.duration_months MONTH) as expires_at
-      FROM payments p
-      JOIN plans pl ON p.plan_id = pl.id
-      WHERE p.user_id = ? AND p.status = 'verified'
-      ORDER BY p.verified_at DESC
-      LIMIT 1
-    `, [decoded.userId])
-
-    await connection.end()
-
-    const activePlan = (rows as any[])[0]
-
-    if (!activePlan) {
-      return NextResponse.json({ activePlan: null })
+    // Verify user role
+    const [userRows] = await connection.execute(
+      "SELECT role FROM users WHERE id = ?",
+      [decoded.userId]
+    );
+    const user = (userRows as any[])[0];
+    if (!user || user.role !== "user") {
+      await connection.end();
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    // Check if plan is still active (not expired)
-    const now = new Date()
-    const expiresAt = new Date(activePlan.expires_at)
-    const isActive = now <= expiresAt
+    // Fetch normal plan (from user_subscriptions)
+    const [normalPlanRows] = await connection.execute(
+      `SELECT 
+         p.name AS plan_name, 
+         p.price, 
+         p.duration_months, 
+         us.expires_at, 
+         DATEDIFF(us.expires_at, NOW()) AS days_left,
+         us.status
+       FROM user_subscriptions us
+       JOIN plans p ON us.plan_id = p.id
+       WHERE us.user_id = ? 
+         AND us.status = 'active' 
+         AND us.expires_at > NOW()
+       ORDER BY us.expires_at DESC
+       LIMIT 1`,
+      [decoded.userId]
+    );
 
-    return NextResponse.json({ 
-      activePlan: isActive ? {
-        ...activePlan,
-        isActive: true,
-        daysLeft: Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-      } : null
-    })
+    // Fetch call plan (from user_call_credits)
+    const [callPlanRows] = await connection.execute(
+      `SELECT 
+         p.name AS plan_name, 
+         p.price, 
+         ucc.credits_remaining, 
+         ucc.expires_at, 
+         DATEDIFF(ucc.expires_at, NOW()) AS days_left,
+         p.call_credits
+       FROM user_call_credits ucc
+       JOIN plans p ON ucc.plan_id = p.id
+       WHERE ucc.user_id = ? 
+         AND ucc.expires_at > NOW()
+       ORDER BY ucc.expires_at DESC
+       LIMIT 1`,
+      [decoded.userId]
+    );
+
+    const normalPlan = (normalPlanRows as any[])[0];
+    const callPlan = (callPlanRows as any[])[0];
+
+    const response = {
+      plans: {
+        normal_plan: normalPlan
+          ? {
+              plan_name: normalPlan.plan_name,
+              price: normalPlan.price,
+              duration_months: normalPlan.duration_months,
+              expires_at: normalPlan.expires_at,
+              daysLeft: normalPlan.days_left,
+              isActive: normalPlan.status === "active",
+            }
+          : null,
+        call_plan: callPlan
+          ? {
+              plan_name: callPlan.plan_name,
+              price: callPlan.price,
+              credits_remaining: callPlan.credits_remaining,
+              expires_at: callPlan.expires_at,
+              daysLeft: callPlan.days_left,
+              isActive: callPlan.credits_remaining > 0,
+            }
+          : null,
+      },
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
-    console.error("Active plan fetch error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("Error fetching active plans:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } finally {
+    await connection.end();
   }
 }

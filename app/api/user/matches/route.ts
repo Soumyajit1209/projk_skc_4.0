@@ -1,4 +1,4 @@
-// app/api/user/matches/route.ts
+// app/api/user/matches/route.ts (Updated with subscription check for viewing details)
 import { type NextRequest, NextResponse } from "next/server"
 import mysql from "mysql2/promise"
 import jwt from "jsonwebtoken"
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Get single match profile details
+// Get single match profile details (with subscription check)
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization")
@@ -107,6 +107,28 @@ export async function POST(request: NextRequest) {
     if (!user || user.role !== "user") {
       await connection.end()
       return NextResponse.json({ error: "Access denied" }, { status: 403 })
+    }
+
+    // Check if user has active subscription to view details
+    const [subscriptionRows] = await connection.execute(`
+      SELECT us.*, p.can_view_details
+      FROM user_subscriptions us
+      JOIN plans p ON us.plan_id = p.id
+      WHERE us.user_id = ? 
+        AND us.status = 'active'
+        AND p.type = 'normal'
+        AND us.expires_at > NOW()
+      ORDER BY us.expires_at DESC
+      LIMIT 1
+    `, [decoded.userId])
+
+    const subscription = (subscriptionRows as any[])[0]
+
+    if (!subscription || !subscription.can_view_details) {
+      await connection.end()
+      return NextResponse.json({ 
+        error: "Premium subscription required to view profile details" 
+      }, { status: 403 })
     }
 
     // Verify that this user is actually matched with the requested profile

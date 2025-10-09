@@ -1,4 +1,3 @@
-// app/api/payments/submit/route.ts
 import { type NextRequest, NextResponse } from "next/server"
 import mysql from "mysql2/promise"
 import jwt from "jsonwebtoken"
@@ -82,7 +81,6 @@ export async function GET(request: NextRequest) {
 
     const connection = await mysql.createConnection(dbConfig)
 
-    // Get user's payments
     const [rows] = await connection.execute(`
       SELECT 
         p.id, p.transaction_id, p.amount, p.status, p.admin_notes,

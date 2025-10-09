@@ -18,6 +18,7 @@ interface AuthContextType {
   login: (identifier: string, password: string, type: "user" | "admin") => Promise<boolean>
   register: (email: string, password: string, name: string, phone: string) => Promise<boolean>
   logout: () => void
+  updateProfileStatus: (profileComplete: boolean) => void
   loading: boolean
 }
 
@@ -85,7 +86,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           setUser(userData)
           
-          // Redirect based on profile completion
           if (userData.profileComplete) {
             router.push("/dashboard")
           } else {
@@ -121,17 +121,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           name: data.user.name,
           phone: data.user.phone,
           role: data.user.role,
-          profileComplete: false, // Always false for new registrations
+          profileComplete: false, 
         }
         setUser(userData)
         
-        // Always redirect to profile creation after registration
         router.push("/profile/create")
         return true
       }
       return false
     } catch {
       return false
+    }
+  }
+
+  const updateProfileStatus = (profileComplete: boolean) => {
+    if (user) {
+      setUser(prev => prev ? { ...prev, profileComplete } : null)
     }
   }
 
@@ -142,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, updateProfileStatus, loading }}>
       {children}
     </AuthContext.Provider>
   )

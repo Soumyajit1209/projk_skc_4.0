@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useRef } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect, useRef } from "react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,11 +10,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { UserPlus, Loader2, Copy, Check, Upload, X, Image } from "lucide-react"
+import PhoneInput from "react-phone-input-2"
+import "react-phone-input-2/lib/style.css"
 
 interface AdminAddUserProps {
   onUserAdded?: () => void
 }
-
 
 interface FormData {
   name: string
@@ -85,18 +86,22 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
     if (message) setMessage(null)
   }
 
+  const handlePhoneChange = (value: string) => {
+    const formattedPhone = `+${value.replace(/\s/g, '')}`
+    setFormData(prev => ({ ...prev, phone: formattedPhone }))
+    if (message) setMessage(null)
+  }
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Validate file type
     const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
     if (!allowedTypes.includes(file.type)) {
       setMessage({ type: 'error', text: 'Invalid file type. Only JPEG, PNG, and WebP are allowed.' })
       return
     }
 
-    // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
       setMessage({ type: 'error', text: 'File size too large. Maximum 5MB allowed.' })
       return
@@ -104,7 +109,6 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
 
     setSelectedFile(file)
     
-    // Create preview URL
     const reader = new FileReader()
     reader.onload = () => {
       setPreviewUrl(reader.result as string)
@@ -167,8 +171,8 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
       return false
     }
 
-    if (!/^\d{10,}$/.test(formData.phone)) {
-      setMessage({ type: 'error', text: 'Phone number must be at least 10 digits' })
+    if (!/^\+\d{10,15}$/.test(formData.phone)) {
+      setMessage({ type: 'error', text: 'Phone number must include country code and be 10-15 digits' })
       return false
     }
 
@@ -190,7 +194,6 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
     setIsLoading(true)
 
     try {
-      // Upload file first if selected
       let photoUrl = ""
       if (selectedFile) {
         const uploadedUrl = await uploadFile()
@@ -202,6 +205,12 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
       }
 
       const token = localStorage.getItem("token")
+      if (!token) {
+        setMessage({ type: 'error', text: 'Authentication token not found. Please log in.' })
+        setIsLoading(false)
+        return
+      }
+
       const response = await fetch("/api/admin/create-profile", {
         method: "POST",
         headers: {
@@ -224,7 +233,6 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
           password: data.defaultPassword
         })
         
-        // Reset form
         setFormData({
           name: "",
           email: "",
@@ -249,7 +257,6 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
           profile_photo: ""
         })
 
-        // Reset file upload
         removeSelectedFile()
 
         if (onUserAdded) {
@@ -291,7 +298,6 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
               </Alert>
             )}
 
-            {/* Basic Information */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Basic Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -318,12 +324,23 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number *</Label>
-                  <Input
-                    id="phone"
+                  <PhoneInput
+                    country={'in'}
                     value={formData.phone}
-                    onChange={(e) => handleInputChange("phone", e.target.value)}
-                    required
+                    onChange={handlePhoneChange}
                     disabled={isLoading}
+                    inputProps={{
+                      required: true,
+                      className: 'w-full pl-12 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    }}
+                    buttonStyle={{
+                      border: '1px solid #d1d5db',
+                      borderRadius: '0.375rem 0 0 0.375rem'
+                    }}
+                    containerStyle={{
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
                   />
                 </div>
                 <div className="space-y-2">
@@ -367,7 +384,6 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
               </div>
             </div>
 
-            {/* Physical Details */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Physical Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -394,7 +410,6 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
               </div>
             </div>
 
-            {/* Social Background */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Social Background</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -430,7 +445,6 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
               </div>
             </div>
 
-            {/* Professional Details */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Professional Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -467,7 +481,6 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
               </div>
             </div>
 
-            {/* Location */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Location</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -494,7 +507,6 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
               </div>
             </div>
 
-            {/* Family Details */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Family Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -526,7 +538,6 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
               </div>
             </div>
 
-            {/* Additional Information */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Additional Information</h3>
               <div className="space-y-4">
@@ -551,9 +562,8 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
                   />
                 </div>
                 
-                {/* Profile Photo Upload */}
                 <div className="space-y-2">
-                  <Label>Profile Photo</Label>
+                  <Label>Profile Photo (Optional)</Label>
                   <div className="space-y-4">
                     {!selectedFile && !previewUrl && (
                       <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
@@ -640,7 +650,6 @@ export default function AdminAddUser({ onUserAdded }: AdminAddUserProps) {
         </CardContent>
       </Card>
 
-      {/* Success Dialog */}
       <Dialog open={successDialog.open} onOpenChange={(open) => setSuccessDialog({ open })}>
         <DialogContent>
           <DialogHeader>
